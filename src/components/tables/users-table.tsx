@@ -64,14 +64,9 @@ export default function UsersTable({
     switch (role) {
       case "ADMIN":
         return "bg-purple-100 text-purple-800"
-      case "participant":
+      case "PARTICIPANT":
         return "bg-green-100 text-green-800"
-      case "HOSTEL":
-        return "bg-blue-100 text-blue-800"
-      case "TEAM_LEAD":
-        return "bg-orange-100 text-orange-800"
-      case "STUDENT":
-        return "bg-indigo-100 text-indigo-800"
+      
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -177,13 +172,6 @@ export default function UsersTable({
     })
   }
 
-  const canPromote = (user: User) => {
-    return user.role === "STUDENT" && !user.student?.isTeamLead
-  }
-
-  const canDemote = (user: User) => {
-    return user.role === "TEAM_LEAD"
-  }
 
   if (loading) {
     return (
@@ -440,7 +428,7 @@ export default function UsersTable({
                               </svg>
                             </button>
                           )}
-                          {onPromote && canPromote(user) && (
+                          {/* {onPromote && canPromote(user) && (
                             <button
                               onClick={() => onPromote(user)}
                               className="text-green-600 hover:text-green-900 transition-colors"
@@ -461,7 +449,7 @@ export default function UsersTable({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                               </svg>
                             </button>
-                          )}
+                          )} */}
                           {onDelete && user.role !== "ADMIN" && (
                             <button
                               onClick={() => onDelete(user)}
