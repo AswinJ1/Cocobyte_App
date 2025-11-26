@@ -13,10 +13,10 @@ export default function Home() {
           priority
         />
         <h1 className="text-2xl font-semibold tracking-tight">
-          Hostel Management System
+          CocoByte 
         </h1>
         <p className="text-sm text-muted-foreground text-center max-w-md">
-          A minimal portal for students to manage hostel stay, registrations, 
+          A minimal portal for participants to get status of icpc contest 
           and related activities at Amrita.
         </p>
       </div>
@@ -27,13 +27,7 @@ export default function Home() {
           href="/login"
           className="px-6 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium shadow hover:bg-primary/90 transition-colors"
         >
-          Hostel/ Student/ participant Login
-        </Link>
-        <Link
-          href="/register"
-          className="px-6 py-2 rounded-md border border-input bg-background text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-        >
-          Register
+          Login
         </Link>
       </div>
     </div>
