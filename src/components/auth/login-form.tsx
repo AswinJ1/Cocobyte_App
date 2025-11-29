@@ -139,7 +139,7 @@ export function LoginForm() {
             Welcome Back
           </h2>
           <p className="text-muted-foreground">
-            Sign in to your hostel management account
+            Sign in to your ICPC Amrita Regionals account
           </p>
         </div>
 
