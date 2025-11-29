@@ -4,66 +4,50 @@ import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
-interface StaybackRequest {
+interface EnrichedLog {
   id: string
-  date: string
-  reason: string
-  status: "PENDING" | "APPROVED" | "REJECTED"
-  clubName: string
-  createdAt: string
-  updatedAt: string
-  student: {
-    id: string
-    name: string
-    hostelName: string
-    roomNo: string
-    phoneNumber: string
+  timestamp: string
+  activity: string
+  user: string
+  email: string
+  data: {
+    IPAddress: string
+    userAgent: string
+    device: string
+    os: string
+    browser: string
+    city: string
+    region: string
+    country: string
   }
-  approvals: Array<{
-    id: string
-    status: "PENDING" | "APPROVED" | "REJECTED"
-    comments?: string
-    createdAt: string
-    participant?: {
-      name: string
-      college?: string
-    }
-    hostel?: {
-      name: string
-    }
-    teamLead?: {
-      name: string
-      clubName: string
-    }
-  }>
 }
 
 interface LogsData {
-  requests: StaybackRequest[]
+  logs: EnrichedLog[]
   stats: Record<string, number>
 }
 
 const LogsPage = () => {
   const { data: session } = useSession()
   const router = useRouter()
-  const [logs, setLogs] = useState<LogsData>({ requests: [], stats: {} })
+  const [logs, setLogs] = useState<LogsData>({ logs: [], stats: {} })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  // Filter states
   const [filters, setFilters] = useState({
     startDate: "",
     endDate: "",
-    status: "",
-    clubName: "",
-    hostelName: "",
+    email: "",
+    ipAddress: "",
+    deviceType: "",
+    country: "",
   })
 
   useEffect(() => {
-       if (!session || (session.user.role as string) !== "ADMIN") {
-         router.push("/")
-         return
-       }
+    if (!session || (session.user.role as string) !== "ADMIN") {
+      router.push("/")
+      return
+    }
     fetchLogs()
   }, [session, router])
 
@@ -86,10 +70,10 @@ const LogsPage = () => {
         const data = await response.json()
         setLogs(data)
       } else {
-        setError("Failed to fetch logs")
+        setError("Failed to fetch login logs")
       }
     } catch (error) {
-      setError("An error occurred while fetching logs")
+      setError("An error occurred while fetching login logs")
     } finally {
       setIsLoading(false)
     }
@@ -103,32 +87,21 @@ const LogsPage = () => {
     setFilters({
       startDate: "",
       endDate: "",
-      status: "",
-      clubName: "",
-      hostelName: "",
+      email: "",
+      ipAddress: "",
+      deviceType: "",
+      country: "",
     })
   }
 
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case "APPROVED":
-        return "bg-green-100 text-green-800"
-      case "REJECTED":
-        return "bg-red-100 text-red-800"
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
+    return new Date(dateString).toLocaleString("en-US", {
       month: "short",
       day: "numeric",
+      year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: true
     })
   }
 
@@ -137,7 +110,7 @@ const LogsPage = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading logs...</p>
+          <p className="mt-4 text-gray-600">Loading login logs...</p>
         </div>
       </div>
     )
@@ -150,8 +123,8 @@ const LogsPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">System Logs</h1>
-              <p className="text-gray-600 mt-1">View and filter stayback requests</p>
+              <h1 className="text-2xl font-bold text-gray-900">Activity Logs</h1>
+              <p className="text-gray-600 mt-1">Track user login sessions & activity</p>
             </div>
             <button
               onClick={() => router.push("/admin")}
@@ -165,41 +138,29 @@ const LogsPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500">Total Requests</h3>
-            <p className="text-2xl font-bold text-gray-900">
-              {logs.requests.length}
-            </p>
+            <h3 className="text-sm font-medium text-gray-500">Total Logins</h3>
+            <p className="text-2xl font-bold text-gray-900">{logs.logs.length}</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500">Pending</h3>
-            <p className="text-2xl font-bold text-yellow-600">
-              {logs.stats.PENDING || 0}
-            </p>
+            <h3 className="text-sm font-medium text-gray-500">Successful</h3>
+            <p className="text-2xl font-bold text-green-600">{logs.stats.SUCCESS || 0}</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500">Approved</h3>
-            <p className="text-2xl font-bold text-green-600">
-              {logs.stats.APPROVED || 0}
-            </p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500">Rejected</h3>
-            <p className="text-2xl font-bold text-red-600">
-              {logs.stats.REJECTED || 0}
+            <h3 className="text-sm font-medium text-gray-500">Unique IPs</h3>
+            <p className="text-2xl font-bold text-blue-600">
+              {new Set(logs.logs.map(log => log.data.IPAddress)).size}
             </p>
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Filters - SAME AS BEFORE */}
         <div className="bg-white p-6 rounded-lg shadow mb-8">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Date
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
               <input
                 type="date"
                 value={filters.startDate}
@@ -207,11 +168,8 @@ const LogsPage = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Date
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
               <input
                 type="date"
                 value={filters.endDate}
@@ -219,50 +177,47 @@ const LogsPage = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange("status", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Statuses</option>
-                <option value="PENDING">Pending</option>
-                <option value="APPROVED">Approved</option>
-                <option value="REJECTED">Rejected</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Club Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
-                type="text"
-                value={filters.clubName}
-                onChange={(e) => handleFilterChange("clubName", e.target.value)}
-                placeholder="Enter club name"
+                type="email"
+                value={filters.email}
+                onChange={(e) => handleFilterChange("email", e.target.value)}
+                placeholder="user@example.com"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Hostel Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">IP Address</label>
               <input
                 type="text"
-                value={filters.hostelName}
-                onChange={(e) => handleFilterChange("hostelName", e.target.value)}
-                placeholder="Enter hostel name"
+                value={filters.ipAddress}
+                onChange={(e) => handleFilterChange("ipAddress", e.target.value)}
+                placeholder="192.168.1.1"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Device Type</label>
+              <input
+                type="text"
+                value={filters.deviceType}
+                onChange={(e) => handleFilterChange("deviceType", e.target.value)}
+                placeholder="Mobile, Desktop..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+              <input
+                type="text"
+                value={filters.country}
+                onChange={(e) => handleFilterChange("country", e.target.value)}
+                placeholder="India, USA..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
-          
           <div className="flex gap-4 mt-4">
             <button
               onClick={fetchLogs}
@@ -286,101 +241,77 @@ const LogsPage = () => {
           </div>
         )}
 
-        {/* Requests Table */}
+        {/* NEW PERFECT TABLE FORMAT */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900">
-              Stayback Requests ({logs.requests.length})
+              Recent Activity ({logs.logs.length})
             </h3>
           </div>
           
-          {logs.requests.length === 0 ? (
+          {logs.logs.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">No requests found matching your criteria.</p>
+              <p className="text-gray-500">No login logs found matching your criteria.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Student
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                      Timestamp
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                      Activity
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                      User
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Club/Hostel
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Reason
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Submitted
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Approvals
+                      Data
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {logs.requests.map((request) => (
-                    <tr key={request.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {request.student.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {request.student.hostelName} - Room {request.student.roomNo}
-                          </div>
-                        </div>
+                  {logs.logs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                        {formatDate(log.timestamp)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{request.clubName}</div>
-                        <div className="text-sm text-gray-500">{request.student.hostelName}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(request.date).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 max-w-xs truncate">
-                          {request.reason}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(
-                            request.status
-                          )}`}
-                        >
-                          {request.status}
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          log.activity === 'Logged In' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {log.activity}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(request.createdAt)}
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{log.user}</div>
+                        <div className="text-xs text-gray-500">{log.email}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-xs space-y-1">
-                          {request.approvals.map((approval) => (
-                            <div key={approval.id} className="flex items-center space-x-2">
-                              <span
-                                className={`inline-flex px-1 py-0.5 text-xs rounded ${getStatusBadgeColor(
-                                  approval.status
-                                )}`}
-                              >
-                                {approval.status}
-                              </span>
-                              <span className="text-gray-600">
-                                {approval.participant?.name ||
-                                  approval.hostel?.name ||
-                                  approval.teamLead?.name}
-                              </span>
-                            </div>
-                          ))}
+                        <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium">IP:</span>
+                            <code className="text-sm bg-white px-2 py-1 rounded font-mono">
+                              {log.data.IPAddress}
+                            </code>
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium">Device:</span> 
+                            <span className="ml-1">{log.data.device} • {log.data.os} • {log.data.browser}</span>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            <span>Location:</span> {log.data.city}, {log.data.country}
+                          </div>
+                          <details className="mt-2">
+                            <summary className="text-xs cursor-pointer text-blue-600 hover:underline">User Agent</summary>
+                            <code className="bg-white p-2 rounded text-xs block mt-1 font-mono border">
+                              {log.data.userAgent}
+                            </code>
+                          </details>
                         </div>
                       </td>
                     </tr>

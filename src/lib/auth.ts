@@ -27,6 +27,37 @@ declare module "next-auth/jwt" {
   }
 }
 
+// Helper function to parse user agent
+function parseUserAgent(ua: string): { deviceType: string, os: string, browser: string } {
+  const uaLower = ua.toLowerCase()
+  let deviceType = 'Desktop'
+  let os = 'Unknown'
+  let browser = 'Unknown'
+  
+  // Device Type
+  if (uaLower.includes('mobile') || uaLower.includes('android') || uaLower.includes('iphone')) {
+    deviceType = 'Mobile'
+  } else if (uaLower.includes('ipad') || uaLower.includes('tablet')) {
+    deviceType = 'Tablet'
+  }
+  
+  // Operating System
+  if (uaLower.includes('windows')) os = 'Windows'
+  else if (uaLower.includes('mac')) os = 'macOS'
+  else if (uaLower.includes('linux')) os = 'Linux'
+  else if (uaLower.includes('android')) os = 'Android'
+  else if (uaLower.includes('ios') || uaLower.includes('iphone') || uaLower.includes('ipad')) os = 'iOS'
+  
+  // Browser
+  if (uaLower.includes('edg')) browser = 'Edge'
+  else if (uaLower.includes('chrome')) browser = 'Chrome'
+  else if (uaLower.includes('firefox')) browser = 'Firefox'
+  else if (uaLower.includes('safari')) browser = 'Safari'
+  else if (uaLower.includes('opera')) browser = 'Opera'
+  
+  return { deviceType, os, browser }
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
@@ -45,7 +76,7 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
         role: { label: "Role", type: "text" },
       },
-      async authorize(credentials, request) {
+      async authorize(credentials, req) {
         try {
           const { email, uid, password, role } = credentials as {
             email?: string
@@ -54,11 +85,19 @@ export const authOptions: NextAuthOptions = {
             role: Role
           }
 
+          // Get IP and User Agent from request
+          const ipAddress = (req?.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
+                           (req?.headers?.['x-real-ip'] as string) || 
+                           'unknown'
+          const userAgent = (req?.headers?.['user-agent'] as string) || 'unknown'
+          
+          // Parse user agent
+          const { deviceType, os, browser } = parseUserAgent(userAgent)
+
           // Find user based on role and credentials
           let user = null
 
-          if (role === "ADMIN" ) {
-            // Admin and Student login with email
+          if (role === "ADMIN") {
             if (!email) throw new Error("Email is required")
             
             user = await prisma.user.findUnique({
@@ -68,8 +107,7 @@ export const authOptions: NextAuthOptions = {
                 participant: true,
               },
             })
-          } else if (role === "PARTICIPANT" ) {
-            // participant, Hostel, Team Lead, and Security login with UID
+          } else if (role === "PARTICIPANT") {
             if (!uid) throw new Error("UID is required")
             
             user = await prisma.user.findUnique({
@@ -81,19 +119,69 @@ export const authOptions: NextAuthOptions = {
           }
 
           if (!user) {
+            // Log failed attempt
+            await prisma.loginLog.create({
+              data: {
+                email: email || uid || 'unknown',
+                ipAddress,
+                userAgent,
+                deviceType,
+                os,
+                browser,
+                isSuccess: false
+              }
+            })
             throw new Error("Invalid credentials")
           }
 
           // Verify role matches
           if (user.role !== role) {
+            await prisma.loginLog.create({
+              data: {
+                userId: user.id,
+                email: user.email,
+                ipAddress,
+                userAgent,
+                deviceType,
+                os,
+                browser,
+                isSuccess: false
+              }
+            })
             throw new Error("Invalid role")
           }
 
           // Verify password
           const isValidPassword = await bcrypt.compare(password, user.password)
           if (!isValidPassword) {
+            await prisma.loginLog.create({
+              data: {
+                userId: user.id,
+                email: user.email,
+                ipAddress,
+                userAgent,
+                deviceType,
+                os,
+                browser,
+                isSuccess: false
+              }
+            })
             throw new Error("Invalid password")
           }
+
+          // Create successful login log
+          await prisma.loginLog.create({
+            data: {
+              userId: user.id,
+              email: user.email,
+              ipAddress,
+              userAgent,
+              deviceType,
+              os,
+              browser,
+              isSuccess: true
+            }
+          })
 
           return {
             id: user.id,
@@ -130,5 +218,4 @@ export const authOptions: NextAuthOptions = {
 
 export default NextAuth(authOptions)
 
-// Helper function for server components
 export const auth = () => getServerSession(authOptions)

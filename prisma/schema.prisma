@@ -17,6 +17,7 @@ model User {
   updatedAt DateTime  @updatedAt
   admin     Admin?
   participant     Participant?
+  loginLogs LoginLog[]
 
   @@index([email])
   @@index([uid])
@@ -49,6 +50,30 @@ model Participant {
   avatarUrl      String?
   gender         String   @default("male")
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LoginLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  email       String
+  ipAddress   String
+  userAgent   String
+  deviceType  String?
+  os          String?
+  browser     String?
+  city        String?
+  region      String?
+  country     String?
+  latitude    Float?
+  longitude   Float?
+  isSuccess   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([createdAt])
+  @@index([userId])
+  @@index([ipAddress])
 }
 
 
