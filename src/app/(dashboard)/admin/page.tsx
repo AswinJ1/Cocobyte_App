@@ -19,13 +19,16 @@ import {
   UserPlus, 
   FileText, 
   TrendingUp,
-  Activity 
+  Activity,
+  LogIn,
+  Globe,
+  Monitor
 } from "lucide-react"
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js'
-import { Pie, Bar } from 'react-chartjs-2'
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement } from 'chart.js'
+import { Pie, Bar, Line } from 'react-chartjs-2'
 
 // Register ChartJS components
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title)
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement)
 
 interface Stats {
   totalUsers: number
@@ -39,6 +42,27 @@ interface User {
   role: string
 }
 
+interface LoginLog {
+  id: string
+  timestamp: string
+  activity: string
+  data: {
+    IPAddress: string
+    device: string
+    os: string
+    browser: string
+    country: string
+  }
+}
+
+interface LoginStats {
+  logs: LoginLog[]
+  stats: {
+    SUCCESS: number
+    FAILED: number
+  }
+}
+
 export default function AdminDashboard() {
   const { data: session } = useSession()
   const [stats, setStats] = useState<Stats>({
@@ -49,6 +73,10 @@ export default function AdminDashboard() {
     rejectedRequests: 0,
   })
   const [users, setUsers] = useState<User[]>([])
+  const [loginStats, setLoginStats] = useState<LoginStats>({ 
+    logs: [], 
+    stats: { SUCCESS: 0, FAILED: 0 } 
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -61,29 +89,27 @@ export default function AdminDashboard() {
       setLoading(true)
       setError(null)
 
-      const [usersRes, logsRes] = await Promise.all([
+      const [usersRes, logsRes, loginLogsRes] = await Promise.all([
         fetch("/api/users"),
+        fetch("/api/logs"),
         fetch("/api/logs"),
       ])
 
       if (!usersRes.ok) throw new Error(`Users API failed: ${usersRes.status}`)
-      if (!logsRes.ok) throw new Error(`Logs API failed: ${logsRes.status}`)
+      if (!loginLogsRes.ok) throw new Error(`Login logs API failed: ${loginLogsRes.status}`)
 
       const usersData = await usersRes.json()
-      const logs = await logsRes.json()
-
-      const statusStats = logs.stats?.status || logs.stats || {}
-      const requestsArray = logs.requests || logs || []
+      const loginLogsData = await loginLogsRes.json()
 
       setUsers(Array.isArray(usersData) ? usersData : [])
+      setLoginStats(loginLogsData)
+      
       setStats({
         totalUsers: Array.isArray(usersData) ? usersData.length : 0,
-        totalRequests: Array.isArray(requestsArray)
-          ? requestsArray.length
-          : logs.total || 0,
-        pendingRequests: statusStats.PENDING || 0,
-        approvedRequests: statusStats.APPROVED || 0,
-        rejectedRequests: statusStats.REJECTED || 0,
+        totalRequests: 0,
+        pendingRequests: 0,
+        approvedRequests: 0,
+        rejectedRequests: 0,
       })
     } catch (error) {
       setError(error instanceof Error ? error.message : "Failed to fetch data")
@@ -115,24 +141,21 @@ export default function AdminDashboard() {
     ],
   }
 
-  // Request status data
-  const requestStatusData = {
-    labels: ['Pending', 'Approved', 'Rejected'],
+  // Login success/fail data
+  const loginActivityData = {
+    labels: ['Successful', 'Failed'],
     datasets: [
       {
-        label: 'Requests by Status',
+        label: 'Login Activity',
         data: [
-          stats.pendingRequests,
-          stats.approvedRequests,
-          stats.rejectedRequests,
+          loginStats.stats.SUCCESS || 0,
+          loginStats.stats.FAILED || 0,
         ],
         backgroundColor: [
-          'rgba(251, 191, 36, 0.8)',
           'rgba(34, 197, 94, 0.8)',
           'rgba(239, 68, 68, 0.8)',
         ],
         borderColor: [
-          'rgba(251, 191, 36, 1)',
           'rgba(34, 197, 94, 1)',
           'rgba(239, 68, 68, 1)',
         ],
@@ -141,33 +164,67 @@ export default function AdminDashboard() {
     ],
   }
 
-  // Bar chart for comparison
-  const comparisonData = {
-    labels: ['Total Users'],
+  // Device distribution
+  const deviceData = {
+    labels: ['Desktop', 'Mobile', 'Tablet'],
     datasets: [
       {
-        label: 'Statistics Overview',
+        label: 'Device Usage',
         data: [
-          stats.totalUsers,
-          stats.totalRequests,
-          stats.pendingRequests,
-          stats.approvedRequests,
-          stats.rejectedRequests,
+          loginStats.logs.filter(log => log.data.device.toLowerCase().includes('desktop')).length,
+          loginStats.logs.filter(log => log.data.device.toLowerCase().includes('mobile')).length,
+          loginStats.logs.filter(log => log.data.device.toLowerCase().includes('tablet')).length,
         ],
         backgroundColor: [
           'rgba(59, 130, 246, 0.8)',
           'rgba(168, 85, 247, 0.8)',
           'rgba(251, 191, 36, 0.8)',
-          'rgba(34, 197, 94, 0.8)',
-          'rgba(239, 68, 68, 0.8)',
         ],
         borderColor: [
           'rgba(59, 130, 246, 1)',
           'rgba(168, 85, 247, 1)',
           'rgba(251, 191, 36, 1)',
-          'rgba(34, 197, 94, 1)',
-          'rgba(239, 68, 68, 1)',
         ],
+        borderWidth: 2,
+      },
+    ],
+  }
+
+  // Browser distribution
+  const browserData = {
+    labels: [...new Set(loginStats.logs.map(log => log.data.browser))].slice(0, 5),
+    datasets: [
+      {
+        label: 'Browser Usage',
+        data: [...new Set(loginStats.logs.map(log => log.data.browser))]
+          .slice(0, 5)
+          .map(browser => loginStats.logs.filter(log => log.data.browser === browser).length),
+        backgroundColor: [
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(34, 197, 94, 0.8)',
+          'rgba(251, 191, 36, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(168, 85, 247, 0.8)',
+        ],
+        borderWidth: 1,
+      },
+    ],
+  }
+
+  // Top countries
+  const countryData = {
+    labels: [...new Set(loginStats.logs.map(log => log.data.country))]
+      .filter(c => c !== 'Unknown')
+      .slice(0, 5),
+    datasets: [
+      {
+        label: 'Login Locations',
+        data: [...new Set(loginStats.logs.map(log => log.data.country))]
+          .filter(c => c !== 'Unknown')
+          .slice(0, 5)
+          .map(country => loginStats.logs.filter(log => log.data.country === country).length),
+        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+        borderColor: 'rgba(59, 130, 246, 1)',
         borderWidth: 2,
       },
     ],
@@ -266,41 +323,120 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
 
-             
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Logins</CardTitle>
+                  <LogIn className="h-4 w-4 text-purple-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-purple-600">{loginStats.logs.length}</div>
+                  <p className="text-xs text-muted-foreground mt-1">All login attempts</p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Successful</CardTitle>
+                  <Activity className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-green-600">{loginStats.stats.SUCCESS}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Successful logins</p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Failed</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-red-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-red-600">{loginStats.stats.FAILED}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Failed attempts</p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:shadow-lg transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Unique IPs</CardTitle>
+                  <Globe className="h-4 w-4 text-orange-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-orange-600">
+                    {new Set(loginStats.logs.map(log => log.data.IPAddress)).size}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Different IP addresses</p>
+                </CardContent>
+              </Card>
             </>
           )}
         </div>
 
         {/* Charts Section */}
         {!loading && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* User Distribution Pie Chart */}
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle>Users by Role</CardTitle>
-                <CardDescription>Distribution of admin and participant users</CardDescription>
-              </CardHeader>
-              <CardContent className="flex justify-center">
-                <div className="w-full max-w-[300px]">
-                  <Pie data={userRoleData} options={chartOptions} />
-                </div>
-              </CardContent>
-            </Card>
+          <>
+            {/* First Row - User & Login Activity */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Users by Role</CardTitle>
+                  <CardDescription>Distribution of admin and participant users</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <div className="w-full max-w-[300px]">
+                    <Pie data={userRoleData} options={chartOptions} />
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Request Status Pie Chart */}
-           
+              <Card>
+                <CardHeader>
+                  <CardTitle>Login Activity</CardTitle>
+                  <CardDescription>Successful vs failed login attempts</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <div className="w-full max-w-[300px]">
+                    <Pie data={loginActivityData} options={chartOptions} />
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Bar Chart */}
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle>Statistics Overview</CardTitle>
-                <CardDescription>Comparison of all metrics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Bar data={comparisonData} options={barChartOptions} />
-              </CardContent>
-            </Card>
-          </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Device Usage</CardTitle>
+                  <CardDescription>Login by device type</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <div className="w-full max-w-[300px]">
+                    <Pie data={deviceData} options={chartOptions} />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Second Row - Browser & Location */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Browser Distribution</CardTitle>
+                  <CardDescription>Top 5 browsers used for login</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Bar data={browserData} options={barChartOptions} />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Login Locations</CardTitle>
+                  <CardDescription>Top 5 countries by login count</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Bar data={countryData} options={barChartOptions} />
+                </CardContent>
+              </Card>
+            </div>
+          </>
         )}
 
         {/* Action Links */}
@@ -326,12 +462,12 @@ export default function AdminDashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-purple-600" />
-                  View Logs
+                  View Login Logs
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground">
-                  View stayback requests and filter by date
+                  View login activity and filter by date
                 </p>
               </CardContent>
             </Card>
