@@ -24,6 +24,7 @@ interface User {
     name: string
     college?: string
     hostelName?: string
+    roomNumber?: string
     wifiusername?: string
     wifiPassword?: string
     hostelLocation?: string
@@ -55,6 +56,7 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
     name: "",
     college: "",
     hostelName: "",
+    roomNumber: "",
     wifiusername: "",
     wifiPassword: "",
     hostelLocation: "",
@@ -73,6 +75,7 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
         name: editingUser.participant?.name || editingUser.admin?.name || "",
         college: editingUser.participant?.college || "",
         hostelName: editingUser.participant?.hostelName || "",
+        roomNumber: editingUser.participant?.roomNumber || "",
         wifiusername: editingUser.participant?.wifiusername || "",
         wifiPassword: editingUser.participant?.wifiPassword || "",
         hostelLocation: editingUser.participant?.hostelLocation || "",
@@ -121,6 +124,7 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
       if (formData.role === "PARTICIPANT") {
         body.college = formData.college
         body.hostelName = formData.hostelName
+        body.roomNumber = formData.roomNumber
         body.wifiusername = formData.wifiusername
         body.wifiPassword = formData.wifiPassword
         body.hostelLocation = formData.hostelLocation
@@ -148,6 +152,7 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
             name: "",
             college: "",
             hostelName: "",
+            roomNumber: "",
             wifiusername: "",
             wifiPassword: "",
             hostelLocation: "",
@@ -299,6 +304,17 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
               value={formData.hostelName}
               onChange={handleInputChange}
               placeholder="Hostel name"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="roomNumber">Room Number</Label>
+            <Input
+              id="roomNumber"
+              name="roomNumber"
+              value={formData.roomNumber}
+              onChange={handleInputChange}
+              placeholder="Room number"
             />
           </div>
 

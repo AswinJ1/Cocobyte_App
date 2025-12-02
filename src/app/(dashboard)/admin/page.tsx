@@ -463,7 +463,7 @@ export default function AdminDashboard() {
             </Card>
           </Link>
 
-          <Link href="/admin/create-user">
+          {/* <Link href="/admin/create-user">
             <Card className="hover:bg-muted/50 hover:shadow-lg transition-all cursor-pointer h-full">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -477,7 +477,7 @@ export default function AdminDashboard() {
                 </p>
               </CardContent>
             </Card>
-          </Link>
+          </Link> */}
         </div>
       </main>
     </div>
