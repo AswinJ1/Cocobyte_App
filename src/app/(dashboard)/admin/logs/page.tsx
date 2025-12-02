@@ -3,6 +3,32 @@
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { 
+  Activity, 
+  Globe, 
+  Monitor, 
+  Calendar,
+  Filter,
+  X,
+  ChevronDown,
+  ChevronUp
+} from "lucide-react"
+import DashboardHeader from "@/components/dashboard-header"
 
 interface EnrichedLog {
   id: string
@@ -33,6 +59,7 @@ const LogsPage = () => {
   const [logs, setLogs] = useState<LogsData>({ logs: [], stats: {} })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   
   const [filters, setFilters] = useState({
     startDate: "",
@@ -94,6 +121,18 @@ const LogsPage = () => {
     })
   }
 
+  const toggleRowExpansion = (logId: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(logId)) {
+        newSet.delete(logId)
+      } else {
+        newSet.add(logId)
+      }
+      return newSet
+    })
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString("en-US", {
       month: "short",
@@ -107,220 +146,264 @@ const LogsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading login logs...</p>
+      <div className="min-h-screen bg-background">
+        <DashboardHeader />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="space-y-4">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-96 w-full" />
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Activity Logs</h1>
-              <p className="text-gray-600 mt-1">Track user login sessions & activity</p>
-            </div>
-            <button
-              onClick={() => router.push("/admin")}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-            >
-              Back to Dashboard
-            </button>
+    <div className="min-h-screen bg-background">
+      <DashboardHeader />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Activity Logs</h1>
+            <p className="text-muted-foreground mt-1">Track user login sessions & activity</p>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500">Total Logins</h3>
-            <p className="text-2xl font-bold text-gray-900">{logs.logs.length}</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500">Successful</h3>
-            <p className="text-2xl font-bold text-green-600">{logs.stats.SUCCESS || 0}</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500">Unique IPs</h3>
-            <p className="text-2xl font-bold text-blue-600">
-              {new Set(logs.logs.map(log => log.data.IPAddress)).size}
-            </p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Logins</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{logs.logs.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">All login attempts</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Successful</CardTitle>
+              <Activity className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{logs.stats.SUCCESS || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">Successful logins</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Unique IPs</CardTitle>
+              <Globe className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                {new Set(logs.logs.map(log => log.data.IPAddress)).size}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Different IP addresses</p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Filters - SAME AS BEFORE */}
-        <div className="bg-white p-6 rounded-lg shadow mb-8">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => handleFilterChange("startDate", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+        {/* Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filters
+            </CardTitle>
+            <CardDescription>Filter logs by date, email, IP, device, or location</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Start Date</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) => handleFilterChange("startDate", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endDate">End Date</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) => handleFilterChange("endDate", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={filters.email}
+                  onChange={(e) => handleFilterChange("email", e.target.value)}
+                  placeholder="user@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ipAddress">IP Address</Label>
+                <Input
+                  id="ipAddress"
+                  type="text"
+                  value={filters.ipAddress}
+                  onChange={(e) => handleFilterChange("ipAddress", e.target.value)}
+                  placeholder="192.168.1.1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="deviceType">Device Type</Label>
+                <Input
+                  id="deviceType"
+                  type="text"
+                  value={filters.deviceType}
+                  onChange={(e) => handleFilterChange("deviceType", e.target.value)}
+                  placeholder="Mobile, Desktop..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <Input
+                  id="country"
+                  type="text"
+                  value={filters.country}
+                  onChange={(e) => handleFilterChange("country", e.target.value)}
+                  placeholder="India, USA..."
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => handleFilterChange("endDate", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            <div className="flex gap-4 mt-6">
+              <Button onClick={fetchLogs}>
+                <Filter className="h-4 w-4 mr-2" />
+                Apply Filters
+              </Button>
+              <Button variant="outline" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-2" />
+                Clear Filters
+              </Button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={filters.email}
-                onChange={(e) => handleFilterChange("email", e.target.value)}
-                placeholder="user@example.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">IP Address</label>
-              <input
-                type="text"
-                value={filters.ipAddress}
-                onChange={(e) => handleFilterChange("ipAddress", e.target.value)}
-                placeholder="192.168.1.1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Device Type</label>
-              <input
-                type="text"
-                value={filters.deviceType}
-                onChange={(e) => handleFilterChange("deviceType", e.target.value)}
-                placeholder="Mobile, Desktop..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-              <input
-                type="text"
-                value={filters.country}
-                onChange={(e) => handleFilterChange("country", e.target.value)}
-                placeholder="India, USA..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-          <div className="flex gap-4 mt-4">
-            <button
-              onClick={fetchLogs}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              Apply Filters
-            </button>
-            <button
-              onClick={clearFilters}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              Clear Filters
-            </button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-            <p className="text-red-700">{error}</p>
-          </div>
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
-        {/* NEW PERFECT TABLE FORMAT */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">
-              Recent Activity ({logs.logs.length})
-            </h3>
-          </div>
-          
-          {logs.logs.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No login logs found matching your criteria.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
-                      Timestamp
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                      Activity
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Data
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {logs.logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                        {formatDate(log.timestamp)}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          log.activity === 'Logged In' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {log.activity}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{log.user}</div>
-                        <div className="text-xs text-gray-500">{log.email}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium">IP:</span>
-                            <code className="text-sm bg-white px-2 py-1 rounded font-mono">
-                              {log.data.IPAddress}
-                            </code>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium">Device:</span> 
-                            <span className="ml-1">{log.data.device} • {log.data.os} • {log.data.browser}</span>
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            <span>Location:</span> {log.data.city}, {log.data.country}
-                          </div>
-                          <details className="mt-2">
-                            <summary className="text-xs cursor-pointer text-blue-600 hover:underline">User Agent</summary>
-                            <code className="bg-white p-2 rounded text-xs block mt-1 font-mono border">
-                              {log.data.userAgent}
-                            </code>
-                          </details>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        {/* Logs Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity ({logs.logs.length})</CardTitle>
+            <CardDescription>View and analyze login activity logs</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {logs.logs.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No login logs found matching your criteria.</p>
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[180px]">Timestamp</TableHead>
+                      <TableHead className="w-[120px]">Activity</TableHead>
+                      <TableHead>User</TableHead>
+                      <TableHead>Details</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logs.logs.map((log) => (
+                      <>
+                        <TableRow key={log.id} className="cursor-pointer" onClick={() => toggleRowExpansion(log.id)}>
+                          <TableCell className="font-mono text-xs">
+                            {formatDate(log.timestamp)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={log.activity === 'Logged In' ? 'default' : 'destructive'}>
+                              {log.activity}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{log.user}</div>
+                            <div className="text-xs text-muted-foreground">{log.email}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2 text-sm">
+                              <Monitor className="h-4 w-4 text-muted-foreground" />
+                              <span>{log.data.device}</span>
+                              <span className="text-muted-foreground">•</span>
+                              <Globe className="h-4 w-4 text-muted-foreground" />
+                              <span>{log.data.country}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {expandedRows.has(log.id) ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                        {expandedRows.has(log.id) && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="bg-muted/50">
+                              <div className="p-4 space-y-3">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <span className="text-sm font-medium">IP Address:</span>
+                                    <code className="ml-2 text-sm bg-background px-2 py-1 rounded font-mono">
+                                      {log.data.IPAddress}
+                                    </code>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium">Location:</span>
+                                    <span className="ml-2 text-sm">
+                                      {log.data.city}, {log.data.region}, {log.data.country}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium">Device:</span>
+                                    <span className="ml-2 text-sm">{log.data.device}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium">OS:</span>
+                                    <span className="ml-2 text-sm">{log.data.os}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-sm font-medium">Browser:</span>
+                                    <span className="ml-2 text-sm">{log.data.browser}</span>
+                                  </div>
+                                </div>
+                                <div className="pt-2 border-t">
+                                  <span className="text-sm font-medium">User Agent:</span>
+                                  <code className="block mt-1 text-xs bg-background p-2 rounded font-mono overflow-x-auto">
+                                    {log.data.userAgent}
+                                  </code>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

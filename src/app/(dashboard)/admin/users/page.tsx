@@ -4,6 +4,29 @@ import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import UserForm from '@/components/forms/user-form'
+import DashboardHeader from '@/components/dashboard-header'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Users, UserPlus, Trash2, RefreshCw, Mail, Calendar } from 'lucide-react'
 
 interface User {
   id: string
@@ -21,10 +44,18 @@ interface User {
   participant?: {
     name: string
     college?: string
+    avatarUrl?: string
+    gender?: string
   }
   admin?: {
     name: string
+    avatarUrl?: string
+    gender?: string
   }
+}
+interface UserFormProps {
+  onSuccess?: () => void;
+  // existing props
 }
 
 const UsersPage = () => {
@@ -37,10 +68,10 @@ const UsersPage = () => {
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
 
   useEffect(() => {
-     if (!session || (session.user.role as string) !== "ADMIN") {
-         router.push("/")
-         return
-       }
+    if (!session || (session.user.role as string) !== "ADMIN") {
+      router.push("/")
+      return
+    }
     fetchUsers()
   }, [session, router])
 
@@ -94,21 +125,41 @@ const UsersPage = () => {
     }
   }
 
-  const getRoleBadgeColor = (role: string) => {
+  const getRoleVariant = (role: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (role) {
       case "ADMIN":
-        return "bg-purple-100 text-purple-800"
+        return "destructive"
       case "PARTICIPANT":
-        return "bg-blue-100 text-blue-800"
+        return "default"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "secondary"
     }
   }
 
   const getUserDisplayName = (user: User) => {
     return user.participant?.name || 
            user.admin?.name || 
-           "Unknown"
+           user.email.split('@')[0]
+  }
+
+  const getUserInitials = (user: User) => {
+    const name = getUserDisplayName(user)
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  const getUserAvatar = (user: User) => {
+    if (user.role === "ADMIN" && user.admin?.avatarUrl) {
+      return user.admin.avatarUrl
+    }
+    if (user.role === "PARTICIPANT" && user.participant?.avatarUrl) {
+      return user.participant.avatarUrl
+    }
+    return null
   }
 
   const getUserDetails = (user: User) => {
@@ -116,9 +167,8 @@ const UsersPage = () => {
       return `${user.student.clubName} • ${user.student.hostelName} • Room ${user.student.roomNo}`
     }
     if (user.participant) {
-      return user.participant.college || "participant Member"
+      return user.participant.college || "Participant Member"
     }
-  
     if (user.admin) {
       return "System Administrator"
     }
@@ -135,172 +185,200 @@ const UsersPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading users...</p>
+      <div className="min-h-screen bg-background">
+        <DashboardHeader />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="space-y-4">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-96 w-full" />
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-              <p className="text-gray-600 mt-1">Manage system users and their roles</p>
-            </div>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setShowForm(!showForm)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {showForm ? "Hide Form" : "Create New User"}
-              </button>
-              <button
-                onClick={() => router.push("/admin")}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-              >
-                Back to Dashboard
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background">
+      <DashboardHeader />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Create User Form */}
-        {showForm && (
-          <div className="mb-8">
-            <UserForm />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+            <p className="text-muted-foreground mt-1">Manage system users and their roles</p>
           </div>
-        )}
+          <Button onClick={() => setShowForm(!showForm)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            {showForm ? "Hide Form" : "Create User"}
+          </Button>
+        </div>
+
+        {/* Create User Form Dialog */}
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create New User</DialogTitle>
+              <DialogDescription>
+                Add a new user to the system. Fill in the required information below.
+              </DialogDescription>
+            </DialogHeader>
+            <UserForm />
+          </DialogContent>
+        </Dialog>
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-            <p className="text-red-700">{error}</p>
-          </div>
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
         {/* Users Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500">Total Users</h3>
-            <p className="text-2xl font-bold text-gray-900">{users.length}</p>
-          </div>
-       
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500">Participants</h3>
-            <p className="text-2xl font-bold text-blue-600">
-              {users.filter(u => u.role === "PARTICIPANT").length}
-            </p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{users.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">All registered users</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Participants</CardTitle>
+              <Users className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                {users.filter(u => u.role === "PARTICIPANT").length}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Active participants</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Administrators</CardTitle>
+              <Users className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {users.filter(u => u.role === "ADMIN").length}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">System admins</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Users Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <Card>
+          <CardHeader>
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">
-                All Users ({users.length})
-              </h3>
-              <button
-                onClick={fetchUsers}
-                className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
-              >
+              <div>
+                <CardTitle>All Users ({users.length})</CardTitle>
+                <CardDescription>View and manage all system users</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchUsers}>
+                <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
-              </button>
+              </Button>
             </div>
-          </div>
-          
-          {users.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">No users found.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contact
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Details
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Created
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {getUserDisplayName(user)}
+          </CardHeader>
+          <CardContent>
+            {users.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No users found.</p>
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Details</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              {getUserAvatar(user) ? (
+                                <AvatarImage src={getUserAvatar(user)!} alt={getUserDisplayName(user)} />
+                              ) : (
+                                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                                  {getUserInitials(user)}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">{getUserDisplayName(user)}</div>
+                              <div className="text-sm text-muted-foreground">
+                                ID: {user.id.slice(0, 8)}...
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-500">
-                            ID: {user.id.slice(0, 8)}...
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getRoleVariant(user.role)}>
+                            {user.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <div className="text-sm">{user.email}</div>
+                              {user.uid && (
+                                <div className="text-xs text-muted-foreground">UID: {user.uid}</div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(
-                            user.role
-                          )}`}
-                        >
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{user.email}</div>
-                        {user.uid && (
-                          <div className="text-sm text-gray-500">UID: {user.uid}</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 max-w-xs truncate">
-                          {getUserDetails(user)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(user.createdAt)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {user.role !== "ADMIN" && (
-                          <button
-                            onClick={() => handleDeleteUser(user.id, user.role)}
-                            disabled={deleteLoading === user.id}
-                            className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                          >
-                            {deleteLoading === user.id ? "Deleting..." : "Delete"}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm max-w-xs truncate">
+                            {getUserDetails(user)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            {formatDate(user.createdAt)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {user.role !== "ADMIN" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteUser(user.id, user.role)}
+                              disabled={deleteLoading === user.id}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              {deleteLoading === user.id ? "Deleting..." : "Delete"}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

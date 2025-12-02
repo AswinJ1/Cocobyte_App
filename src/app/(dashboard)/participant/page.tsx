@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-
+import DashboardHeader from "@/components/dashboard-header"
 import { 
   Loader2, 
   Wifi,
@@ -112,40 +112,8 @@ export default function ParticipantDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-12 w-12 cursor-pointer ring-2 ring-blue-100 hover:ring-blue-300 transition-all">
-                {profile?.participant?.avatarUrl ? (
-                  <AvatarImage src={profile.participant.avatarUrl} alt={profile.participant.name} />
-                ) : (
-                  <AvatarFallback className="bg-blue-600 text-white">
-                    {profile?.participant?.name ? getInitials(profile.participant.name) : "PT"}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-              
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  {profile?.participant?.name || "Participant"}
-                </h1>
-                <p className="text-sm text-gray-600">
-                  {profile?.participant?.college || "Participant Dashboard"}
-                </p>
-              </div>
-            </div>
-
-            {/* <Button
-              onClick={() => signOut()}
-              variant="destructive"
-              size="default"
-            >
-              Logout
-            </Button> */}
-          </div>
-        </div>
-      </header>
+          <DashboardHeader />
+      
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Error Message */}

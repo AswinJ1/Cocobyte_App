@@ -26,6 +26,8 @@ import {
 } from "lucide-react"
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement } from 'chart.js'
 import { Pie, Bar, Line } from 'react-chartjs-2'
+import { SearchBar } from "@/components/search-bar"
+import DashboardHeader from "@/components/dashboard-header"
 
 // Register ChartJS components
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement)
@@ -269,21 +271,9 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen  bg-background">
       {/* Header */}
-      <header className="border-b bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Welcome back, {session?.user?.email}
-            </p>
-          </div>
-          <Button variant="destructive" size="default" onClick={() => signOut()}>
-            Logout
-          </Button>
-        </div>
-      </header>
+    <DashboardHeader />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Error */}
