@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
+import DashboardHeader from "@/components/dashboard-header"
+import Image from "next/image"
 import { 
   Loader2, 
   Shield, 
@@ -21,11 +24,16 @@ import {
   MapPin,
   Wifi,
   Home,
-  ArrowLeft
+  ArrowLeft,
+  CheckCircle,
+  ExternalLink,
+  Lock,
+  UserCircle,
+  Award,
+  Clock
 } from "lucide-react"
 import { AvatarSelector } from "@/components/avatar-selector"
-import Image from 'next/image'
-
+import { cn } from "@/lib/utils"
 
 interface ParticipantProfile {
   id: string
@@ -122,227 +130,340 @@ export default function ParticipantProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="min-h-screen bg-background">
+        <DashboardHeader />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="space-y-6">
+            <Skeleton className="h-64 w-full" />
+            <div className="grid gap-6 md:grid-cols-2">
+              <Skeleton className="h-96" />
+              <Skeleton className="h-96" />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
 
   if (error || !profile) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <p className="text-center text-red-600">{error || "Profile not found"}</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <DashboardHeader />
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6">
+              <p className="text-center text-destructive">{error || "Profile not found"}</p>
+              <Button 
+                onClick={() => router.push("/participant")}
+                className="w-full mt-4"
+                variant="outline"
+              >
+                Back to Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/participant")}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Dashboard
-        </Button>
+    <div className="min-h-screen bg-background">
+      <DashboardHeader />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/participant")}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Dashboard
+          </Button>
+          <span>/</span>
+          <span className="text-foreground">Profile</span>
+        </div>
 
-        {/* Header Card with Cover */}
-        <Card className="mb-6 overflow-hidden">
-          {/* Cover Image */}
-
-          
-          <CardContent className="relative pb-6 pt-20">
-            {/* Avatar positioned over cover */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 -mt-16 mb-6">
-              <div className="relative">
-                <AvatarSelector
-                  currentAvatar={profile.participant.avatarUrl}
-                  gender={profile.participant.gender}
-                  onSave={handleAvatarSave}
-                  fallbackInitials={getInitials(profile.participant.name)}
+        {/* Header Card with Gradient Background */}
+        <Card className="mb-6 overflow-hidden border-none shadow-xl">
+          {/* Gradient Background with ICPC Logo */}
+          <div className="h-32 sm:h-48  relative">
+            <div className="absolute inset-0 bg-black/10" />
+            
+            {/* ICPC Foundation Logo */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative w-32 h-32 sm:w-40 sm:h-40 ">
+                <Image
+                  src="/icpc_foundation.png"
+                  alt="ICPC Foundation"
+                  fill
+                  className="object-contain"
+                  priority
                 />
               </div>
+            </div>
+
+            {/* Optional: Add text overlay */}
+         
+          </div>
+          
+          <CardContent className="relative pb-6 -mt-16 sm:-mt-20">
+            {/* Avatar and Info Section */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6">
+              {/* Avatar */}
+              <div className="relative">
+                  <AvatarSelector
+                    currentAvatar={profile.participant.avatarUrl}
+                    gender={profile.participant.gender}
+                    onSave={handleAvatarSave}
+                    fallbackInitials={getInitials(profile.participant.name)}
+                  />
+                
+               
+              </div>
               
+              {/* Name and Details */}
               <div className="text-center sm:text-left flex-1">
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-3xl sm:text-4xl font-bold">
                   {profile.participant.name}
                 </h1>
-                <p className="text-gray-600 mt-1">{profile.participant.college}</p>
-                <div className="flex flex-wrap gap-2 mt-3 justify-center sm:justify-start">
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                    <User className="h-3 w-3 mr-1" />
-                    Participant
-                  </Badge>
-                  <Badge variant="secondary" className="bg-green-100 text-green-700">
-                    Active
-                  </Badge>
-                </div>
+                <p className="text-muted-foreground text-lg mt-1">
+                  {profile.participant.college}
+                </p>
+               
               </div>
 
+              {/* Edit Button */}
               <Button
                 onClick={() => router.push("/participant/edit_profile")}
-                className="mt-4 sm:mt-0"
+                className="gap-2"
+                size="lg"
               >
-                <Edit className="h-4 w-4 mr-2" />
+                <Edit className="h-4 w-4" />
                 Edit Profile
               </Button>
             </div>
           </CardContent>
         </Card>
 
+        {/* Main Content Grid */}
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Personal Information */}
-          <Card>
+          {/* Personal Information Card */}
+          <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                {/* <User className="h-5 w-5 text-blue-600" /> */}
+                <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                  <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
                 Personal Information
               </CardTitle>
               <CardDescription>Your basic details and identification</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Mail className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-500">Email Address</label>
-                    <p className="text-gray-900 break-all">{profile.email}</p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <IdCard className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-500">UID</label>
-                    <p className="text-gray-900 font-mono">{profile.uid}</p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Building2 className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-500">College</label>
-                    <p className="text-gray-900">{profile.participant.college}</p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Phone className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-500">Contact Number</label>
-                    <p className="text-gray-900">{profile.participant.contactNumber}</p>
-                  </div>
-                </div>
-              </div>
+            <CardContent className="space-y-1">
+              <InfoItem
+                icon={<Mail className="h-5 w-5" />}
+                label="Email Address"
+                value={profile.email}
+                className="text-blue-600"
+              />
+              
+              <InfoItem
+                icon={<IdCard className="h-5 w-5" />}
+                label="Unique ID"
+                value={profile.uid}
+                className="font-mono"
+              />
+              
+              <InfoItem
+                icon={<Building2 className="h-5 w-5" />}
+                label="College"
+                value={profile.participant.college}
+              />
+              
+              <InfoItem
+                icon={<Phone className="h-5 w-5" />}
+                label="Contact Number"
+                value={profile.participant.contactNumber}
+              />
             </CardContent>
           </Card>
 
-          {/* Hostel Information */}
-          <Card>
+          {/* Hostel Information Card */}
+          <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                {/* <Home className="h-5 w-5 text-purple-600" /> */}
+                <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                  <Home className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
                 Hostel Information
               </CardTitle>
               <CardDescription>Your accommodation details</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Building2 className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-500">Hostel Name</label>
-                    <p className="text-gray-900 font-semibold">{profile.participant.hostelName}</p>
-                  </div>
-                </div>
+            <CardContent className="space-y-1">
+              <InfoItem
+                icon={<Building2 className="h-5 w-5" />}
+                label="Hostel Name"
+                value={profile.participant.hostelName}
+                className="font-semibold"
+              />
 
+              <div className="space-y-3 pt-2">
                 <Separator />
-
-                <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Wifi className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div className="flex-1">
-                    <label className="text-sm font-medium text-gray-500">WiFi UserName</label>
-                    <p className="text-gray-900 font-mono">{profile.participant.wifiusername}</p>
-                    <label className="text-sm font-medium text-gray-500">WiFi Password</label>
-                    <p className="text-gray-900 font-mono">{profile.participant.wifiPassword}</p>
-                  </div>
-                </div>
-
-                {profile.participant.hostelLocation && (
-                  <>
+                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border">
+                  <Wifi className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">WiFi Username</label>
+                      <p className="text-sm font-mono mt-0.5">{profile.participant.wifiusername}</p>
+                    </div>
                     <Separator />
-                    <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
-                      <div className="flex-1">
-                        <label className="text-sm font-medium text-gray-500">Location</label>
-                        <a
-                          href={profile.participant.hostelLocation}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline flex items-center gap-1"
-                        >
-                          View on Google Maps
-                          <ArrowLeft className="h-3 w-3 rotate-180" />
-                        </a>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">WiFi Password</label>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Lock className="h-3 w-3 text-muted-foreground" />
+                        <p className="text-sm font-mono">{profile.participant.wifiPassword}</p>
                       </div>
                     </div>
-                  </>
-                )}
+                  </div>
+                </div>
               </div>
+
+              {profile.participant.hostelLocation && (
+                <>
+                  <Separator />
+                  <div className="flex items-start gap-3 p-4 rounded-lg hover:bg-muted/50 transition-colors border">
+                    <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="flex-1">
+                      <label className="text-xs font-medium text-muted-foreground">Location</label>
+                      <a
+                        href={profile.participant.hostelLocation}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:underline flex items-center gap-1 mt-1"
+                      >
+                        View on Google Maps
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
-          {/* Account Status */}
-          <Card className="md:col-span-2">
+          {/* Account Status Card - Full Width */}
+          <Card className="md:col-span-2 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                {/* <Shield className="h-5 w-5 text-green-600" /> */}
+                <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                  <Shield className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
                 Account Status
               </CardTitle>
               <CardDescription>Your account activity and timeline</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-50 border border-blue-100">
-                  <Calendar className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <div>
-                    <label className="text-sm font-medium text-blue-900">Member Since</label>
-                    <p className="text-blue-700 font-semibold mt-1">{formatDate(profile.createdAt)}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-purple-50 border border-purple-100">
-                  <User className="h-5 w-5 text-purple-600 mt-0.5" />
-                  <div>
-                    <label className="text-sm font-medium text-purple-900">Account Type</label>
-                    <p className="text-purple-700 font-semibold mt-1">{profile.role}</p>
-                  </div>
-                </div>
-
-                {/* <div className="flex items-start gap-3 p-4 rounded-lg bg-green-50 border border-green-100">
-                  <Shield className="h-5 w-5 text-green-600 mt-0.5" />
-                  <div>
-                    <label className="text-sm font-medium text-green-900">Status</label>
-                    <p className="text-green-700 font-semibold mt-1">Active</p>
-                  </div>
-                </div> */}
+                <StatCard
+                  icon={<Calendar className="h-6 w-6" />}
+                  label="Member Since"
+                  value={formatDate(profile.createdAt)}
+                  color="blue"
+                />
+                
+                <StatCard
+                  icon={<UserCircle className="h-6 w-6" />}
+                  label="Account Type"
+                  value={profile.role}
+                  color="purple"
+                />
+                
+                <StatCard
+                  icon={<Clock className="h-6 w-6" />}
+                  label="Last Updated"
+                  value={formatDate(profile.participant.createdAt)}
+                  color="green"
+                />
               </div>
             </CardContent>
           </Card>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Info Item Component
+function InfoItem({ 
+  icon, 
+  label, 
+  value, 
+  className 
+}: { 
+  icon: React.ReactNode
+  label: string
+  value: string
+  className?: string 
+}) {
+  return (
+    <>
+      <div className="flex items-start gap-3 p-4 rounded-lg hover:bg-muted/50 transition-colors">
+        <div className="text-muted-foreground mt-0.5">{icon}</div>
+        <div className="flex-1 min-w-0">
+          <label className="text-xs font-medium text-muted-foreground block">{label}</label>
+          <p className={cn("text-sm mt-1 break-words", className)}>{value}</p>
+        </div>
+      </div>
+      <Separator />
+    </>
+  )
+}
+
+// Stat Card Component
+function StatCard({
+  icon,
+  label,
+  value,
+  color
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  color: "blue" | "purple" | "green"
+}) {
+  const colorClasses = {
+    blue: "bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-800",
+    purple: "bg-purple-50 border-purple-100 dark:bg-purple-900/20 dark:border-purple-800",
+    green: "bg-green-50 border-green-100 dark:bg-green-900/20 dark:border-green-800"
+  }
+
+  const iconColorClasses = {
+    blue: "text-blue-600 dark:text-blue-400",
+    purple: "text-purple-600 dark:text-purple-400",
+    green: "text-green-600 dark:text-green-400"
+  }
+
+  const textColorClasses = {
+    blue: "text-blue-900 dark:text-blue-100",
+    purple: "text-purple-900 dark:text-purple-100",
+    green: "text-green-900 dark:text-green-100"
+  }
+
+  return (
+    <div className={cn("flex items-start gap-4 p-6 rounded-xl border-2", colorClasses[color])}>
+      <div className={cn("mt-1", iconColorClasses[color])}>
+        {icon}
+      </div>
+      <div className="flex-1">
+        <label className={cn("text-sm font-medium", textColorClasses[color])}>
+          {label}
+        </label>
+        <p className={cn("font-semibold mt-1 text-lg", textColorClasses[color])}>
+          {value}
+        </p>
       </div>
     </div>
   )

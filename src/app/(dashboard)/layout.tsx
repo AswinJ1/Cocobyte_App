@@ -21,7 +21,10 @@ import {
   User,
   ChevronLeft,
   User2Icon,
-  Mail
+  Mail,
+  Bell,
+  Settings,
+  List
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -37,14 +40,19 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
 interface NavigationItem {
   name: string
-  href: string
+  href?: string
   icon: React.ReactNode
   roles: string[]
+  subItems?: NavigationItem[]
 }
 
 const navigation: NavigationItem[] = [
@@ -79,10 +87,41 @@ const navigation: NavigationItem[] = [
     roles: ["PARTICIPANT"]
   },
   {
+    name: "Contest Info",
+    href: "/participant/contest_info",
+    icon: <CheckCircle className="w-5 h-5" />,
+    roles: ["PARTICIPANT"]
+  },
+  {
+    name: "Notifications",
+    href: "/participant/notification",
+    icon: <Bell className="w-5 h-5" />,
+    roles: ["PARTICIPANT"]
+  },
+  {
     name: "Profile",
     href: "/admin/profile",
     icon: <User className="w-5 h-5" />,
     roles: ["ADMIN"]
+  },
+  {
+    name: "Notifications",
+    icon: <Bell className="w-5 h-5" />,
+    roles: ["ADMIN"],
+    subItems: [
+      {
+        name: "Create Notification",
+        href: "/admin/notifications",
+        icon: <Plus className="w-4 h-4" />,
+        roles: ["ADMIN"]
+      },
+      {
+        name: "Manage Notifications",
+        href: "/admin/notifications/manage",
+        icon: <Settings className="w-4 h-4" />,
+        roles: ["ADMIN"]
+      },
+    ]
   },
 ]
 
@@ -109,9 +148,80 @@ function NavItem({
   isCollapsed: boolean
   onClick?: () => void 
 }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const pathname = usePathname()
+
+  // Check if any subitem is active
+  const hasActiveSubItem = item.subItems?.some(subItem => 
+    subItem.href && pathname.startsWith(subItem.href)
+  )
+
+  // If item has subitems, render as dropdown
+  if (item.subItems && item.subItems.length > 0) {
+    return (
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenuTrigger asChild>
+          <button
+            className={cn(
+              "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+              hasActiveSubItem || isActive
+                ? "bg-primary text-primary-foreground shadow-lg" 
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md",
+              isCollapsed && "justify-center"
+            )}
+          >
+            <div className={cn(
+              "transition-transform duration-200",
+              (hasActiveSubItem || isActive) && "scale-110"
+            )}>
+              {item.icon}
+            </div>
+            {!isCollapsed && (
+              <>
+                <span className="flex-1 text-left">{item.name}</span>
+                <ChevronRight className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  isOpen && "rotate-90"
+                )} />
+              </>
+            )}
+            {isCollapsed && (
+              <div className="absolute left-full ml-2 hidden group-hover:block z-50">
+                <div className="bg-popover text-popover-foreground px-3 py-2 rounded-lg text-sm whitespace-nowrap shadow-xl border">
+                  {item.name}
+                </div>
+              </div>
+            )}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent 
+          side={isCollapsed ? "right" : "bottom"} 
+          align={isCollapsed ? "start" : "start"}
+          className="w-56"
+        >
+          <DropdownMenuLabel>{item.name}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {item.subItems.map((subItem) => (
+            <DropdownMenuItem key={subItem.href} asChild>
+              <Link
+                href={subItem.href || "#"}
+                onClick={onClick}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                {subItem.icon}
+                <span>{subItem.name}</span>
+              </Link>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
+
+  // Regular nav item without subitems
   return (
     <Link
-      href={item.href}
+      href={item.href || "#"}
       onClick={onClick}
       className={cn(
         "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
@@ -183,7 +293,8 @@ export default function DashboardLayout({
     item.roles.includes(userRole)
   )
 
-  const isCurrentPath = (href: string) => {
+  const isCurrentPath = (href?: string) => {
+    if (!href) return false
     const roleBase = `/${userRole.toLowerCase().replace('_', '-')}`
     if (href === roleBase) {
       return pathname === href
@@ -222,7 +333,7 @@ export default function DashboardLayout({
         <div className="space-y-1.5 py-4">
           {filteredNavigation.map((item) => (
             <NavItem
-              key={item.href}
+              key={item.href || item.name}
               item={item}
               isActive={isCurrentPath(item.href)}
               isCollapsed={isCollapsed && !isMobile}

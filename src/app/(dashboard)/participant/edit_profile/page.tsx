@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Save, User, Mail, Lock, Shield } from "lucide-react"
+import DashboardHeader from "@/components/dashboard-header"
+import { Loader2, Save, User, Mail, Building2, IdCard } from "lucide-react"
 
-interface participantProfile {
+interface ParticipantProfile {
   id: string
   email: string
   uid: string
@@ -20,7 +21,7 @@ interface participantProfile {
   }
 }
 
-export default function participantEditProfile() {
+export default function ParticipantEditProfile() {
   const { data: session, update } = useSession()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
@@ -49,11 +50,10 @@ export default function participantEditProfile() {
   const fetchProfile = async () => {
     try {
       setIsLoading(true)
-      // Use dedicated profile endpoint
       const response = await fetch("/api/profile")
       
       if (response.ok) {
-        const currentUser = await response.json() as participantProfile
+        const currentUser = await response.json() as ParticipantProfile
         
         setFormData({
           name: currentUser.participant.name,
@@ -121,10 +121,8 @@ export default function participantEditProfile() {
         updateData.newPassword = formData.newPassword
       }
 
-      console.log("Sending update request:", updateData) // Debug log
-
       const response = await fetch("/api/profile", {
-        method: "PATCH", // Changed from PUT to PATCH
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
@@ -132,7 +130,6 @@ export default function participantEditProfile() {
       })
 
       const data = await response.json()
-      console.log("Response:", response.status, data) // Debug log
 
       if (response.ok) {
         setSuccess("Profile updated successfully!")
@@ -149,6 +146,11 @@ export default function participantEditProfile() {
         
         // Refresh profile data
         await fetchProfile()
+
+        // Redirect to profile after 2 seconds
+        setTimeout(() => {
+          router.push("/participant/profile")
+        }, 2000)
       } else {
         setError(data.error || "Failed to update profile")
       }
@@ -162,186 +164,154 @@ export default function participantEditProfile() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="min-h-screen bg-background">
+        <DashboardHeader />
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="h-8 w-8 text-blue-600" />
-            Edit Profile
-          </h1>
-          <p className="text-gray-600 mt-2">Update your security profile information</p>
-        </div>
+    <div className="min-h-screen bg-background">
+      <DashboardHeader />
+      
+      <div className="py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              Edit Profile
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Update your participant profile information</p>
+          </div>
 
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-        {success && (
-          <Alert className="mb-6 bg-green-50 text-green-800 border-green-200">
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        )}
+          {success && (
+            <Alert className="mb-6 bg-green-50 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Basic Information
-              </CardTitle>
-              <CardDescription>
-                Update your personal details
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  placeholder="Enter your full name"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="college">college</Label>
-                <Input
-                  id="college"
-                  name="college"
-                  value={formData.college}
-                  onChange={handleInputChange}
-                  placeholder="Enter your college"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Basic Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Basic Information
+                </CardTitle>
+                <CardDescription>
+                  Update your personal details
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="name" className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-gray-500" />
+                    Full Name
+                  </Label>
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    disabled
-                    className="pl-10 bg-gray-50"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter your full name"
+                    required
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Email cannot be changed. Contact admin if needed.
-                </p>
-              </div>
 
-              <div>
-                <Label htmlFor="uid">UID</Label>
-                <Input
-                  id="uid"
-                  name="uid"
-                  value={formData.uid}
-                  disabled
-                  className="bg-gray-50"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  UID cannot be changed. Contact admin if needed.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+                <div>
+                  <Label htmlFor="college" className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-gray-500" />
+                    College
+                  </Label>
+                  <Input
+                    id="college"
+                    name="college"
+                    value={formData.college}
+                    onChange={handleInputChange}
+                    placeholder="Enter your college"
+                    required
+                  />
+                </div>
 
-          {/* Change Password */}
-          {/* <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lock className="h-5 w-5" />
-                Change Password
-              </CardTitle>
-              <CardDescription>
-                Leave blank if you don't want to change your password
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="currentPassword">Current Password</Label>
-                <Input
-                  id="currentPassword"
-                  name="currentPassword"
-                  type="password"
-                  value={formData.currentPassword}
-                  onChange={handleInputChange}
-                  placeholder="Enter current password"
-                />
-              </div>
+                <div>
+                  <Label htmlFor="email" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-gray-500" />
+                    Email
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      disabled
+                      className="pl-10 bg-gray-50 dark:bg-gray-900 cursor-not-allowed"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Email cannot be changed. Contact admin if needed.
+                  </p>
+                </div>
 
-              <div>
-                <Label htmlFor="newPassword">New Password</Label>
-                <Input
-                  id="newPassword"
-                  name="newPassword"
-                  type="password"
-                  value={formData.newPassword}
-                  onChange={handleInputChange}
-                  placeholder="Enter new password (min. 6 characters)"
-                />
-              </div>
+                <div>
+                  <Label htmlFor="uid" className="flex items-center gap-2">
+                    <IdCard className="h-4 w-4 text-gray-500" />
+                    UID
+                  </Label>
+                  <Input
+                    id="uid"
+                    name="uid"
+                    value={formData.uid}
+                    disabled
+                    className="bg-gray-50 dark:bg-gray-900 cursor-not-allowed font-mono"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    UID cannot be changed. Contact admin if needed.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
 
-              <div>
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder="Confirm new password"
-                />
-              </div>
-            </CardContent>
-          </Card> */}
-
-          {/* Action Buttons */}
-          <div className="flex gap-4">
-            <Button
-              type="submit"
-              disabled={isSaving}
-              className="flex-1"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-            
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
+            {/* Action Buttons */}
+            <div className="flex gap-4">
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="flex-1"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+              
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push("/participant/profile")}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )

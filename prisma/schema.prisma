@@ -8,17 +8,19 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  uid       String?   @unique
-  password  String
-  role      Role
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  admin     Admin?
-  participant     Participant?
-  loginLogs LoginLog[]
-
+  id                    String         @id @default(cuid())
+  email                 String         @unique
+  uid                   String?        @unique
+  password              String
+  role                  Role
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  admin                 Admin?
+  loginLogs             LoginLog[]
+  participant           Participant?
+  notifications         Notification[] @relation("UserNotifications")
+  createdNotifications  Notification[] @relation("CreatedNotifications")
+  
   @@index([email])
   @@index([uid])
 }
@@ -34,17 +36,17 @@ model Admin {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-
 model Participant {
   id             String   @id @default(cuid())
   userId         String   @unique
   name           String
   college        String?
   hostelName     String
-  wifiusername   String 
-  wifiPassword   String 
+  wifiusername   String
+  wifiPassword   String
   hostelLocation String?
-  contactNumber  String 
+  contactNumber  String
+  roomNumber     String 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   avatarUrl      String?
@@ -53,34 +55,69 @@ model Participant {
 }
 
 model LoginLog {
-  id          String   @id @default(cuid())
-  userId      String?
-  email       String
-  ipAddress   String
-  userAgent   String
-  deviceType  String?
-  os          String?
-  browser     String?
-  city        String?
-  region      String?
-  country     String?
-  latitude    Float?
-  longitude   Float?
-  isSuccess   Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  userId     String?
+  email      String
+  ipAddress  String
+  userAgent  String
+  deviceType String?
+  os         String?
+  browser    String?
+  city       String?
+  region     String?
+  country    String?
+  latitude   Float?
+  longitude  Float?
+  isSuccess  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@index([createdAt])
   @@index([userId])
   @@index([ipAddress])
 }
 
-
+model Notification {
+  id         String               @id @default(cuid())
+  userId     String?
+  user       User?                @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  message    String
+  type       NotificationType     @default(INFO)
+  priority   NotificationPriority @default(NORMAL)
+  targetRole Role?
+  actionUrl  String?
+  isRead     Boolean              @default(false)
+  readAt     DateTime?
+  expiresAt  DateTime?
+  createdBy  String
+  creator    User                 @relation("CreatedNotifications", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt  DateTime             @default(now())
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@index([isRead])
+  @@index([targetRole])
+}
 
 enum Role {
   ADMIN
   PARTICIPANT
 }
 
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  ANNOUNCEMENT
+  CONTEST
+  SYSTEM
+}
 
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}

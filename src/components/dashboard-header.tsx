@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, LogOut, Home, Users, FileText, User, Settings, BarChart } from "lucide-react"
+import { Search, LogOut, Home, Users, FileText, User, Settings, BarChart, Trophy, BellDotIcon, BellDot, BellIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useSession, signOut } from "next-auth/react"
@@ -24,14 +24,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 interface SearchOption {
   label: string
   href: string
   icon: React.ReactNode
   roles: string[]
+}
+
+interface Notification {
+  id: string
+  title: string
+  message: string
+  type: string
+  priority: string
+  isRead: boolean
+  createdAt: string
+  actionUrl: string | null
 }
 
 const searchOptions: SearchOption[] = [
@@ -48,6 +66,18 @@ const searchOptions: SearchOption[] = [
     roles: ["PARTICIPANT"]
   },
   {
+    label: "Create Notification",
+    href: "/admin/notifications",
+    icon: <BellDot className="h-4 w-4" />,
+    roles: ["ADMIN"]
+  },
+   {
+    label: "Manage Notification",
+    href: "/admin/notifications/manage",
+    icon: <BellIcon className="h-4 w-4" />,
+    roles: ["ADMIN"]
+  },
+   {
     label: "User Management",
     href: "/admin/users",
     icon: <Users className="h-4 w-4" />,
@@ -71,13 +101,39 @@ const searchOptions: SearchOption[] = [
     icon: <User className="h-4 w-4" />,
     roles: ["PARTICIPANT"]
   },
- 
+   {
+    label: "Contest Info",
+    href: "/participant/contest_info",
+    icon: <Trophy className="h-4 w-4" />,
+    roles: ["PARTICIPANT"]
+  },
+   {
+    label: "Notifications",
+    href: "/participant/notification",
+    icon: <BellDotIcon className="h-4 w-4" />,
+    roles: ["PARTICIPANT"]
+  },
+   {
+    label: "Edit Profile",
+    href: "/participant/edit_profile",
+    icon: <User className="h-4 w-4" />,
+    roles: ["PARTICIPANT"]
+  },
+    {
+    label: "Edit Profile",
+    href: "/admin/edit_profile",
+    icon: <User className="h-4 w-4" />,
+    roles: ["ADMIN"]
+  },
 ]
 
 export default function DashboardHeader() {
   const { data: session, status } = useSession()
   const [profile, setProfile] = useState<any>(null)
   const [open, setOpen] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [notificationOpen, setNotificationOpen] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -103,6 +159,29 @@ export default function DashboardHeader() {
 
     if (session) {
       fetchProfile()
+    }
+  }, [session])
+
+  // Fetch notifications
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await fetch("/api/notifications")
+        if (response.ok) {
+          const data = await response.json()
+          setNotifications(data.notifications || [])
+          setUnreadCount(data.unreadCount || 0)
+        }
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error)
+      }
+    }
+
+    if (session) {
+      fetchNotifications()
+      // Poll for new notifications every 30 seconds
+      const interval = setInterval(fetchNotifications, 30000)
+      return () => clearInterval(interval)
     }
   }, [session])
 
@@ -175,6 +254,70 @@ export default function DashboardHeader() {
     }
   }
 
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case "SUCCESS":
+        return "text-green-600 dark:text-green-400"
+      case "WARNING":
+        return "text-orange-600 dark:text-orange-400"
+      case "ERROR":
+        return "text-red-600 dark:text-red-400"
+      case "CONTEST":
+        return "text-purple-600 dark:text-purple-400"
+      case "SYSTEM":
+        return "text-blue-600 dark:text-blue-400"
+      case "ANNOUNCEMENT":
+        return "text-indigo-600 dark:text-indigo-400"
+      default:
+        return "text-gray-600 dark:text-gray-400"
+    }
+  }
+
+  const formatTimeAgo = (dateString: string) => {
+    const now = new Date()
+    const date = new Date(dateString)
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+    if (seconds < 60) return "Just now"
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
+    return date.toLocaleDateString()
+  }
+
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read
+    if (!notification.isRead) {
+      try {
+        await fetch(`/api/notifications?id=${notification.id}`, {
+          method: "PATCH"
+        })
+      } catch (error) {
+        console.error("Failed to mark notification as read:", error)
+      }
+    }
+
+    setNotificationOpen(false)
+
+    // Navigate to action URL or notification page
+    if (notification.actionUrl) {
+      router.push(notification.actionUrl)
+    } else {
+      const notificationPath = userRole === "ADMIN" 
+        ? "/admin/notifications/manage" 
+        : "/participant/notification"
+      router.push(notificationPath)
+    }
+  }
+
+  const handleViewAllNotifications = () => {
+    setNotificationOpen(false)
+    const notificationPath = userRole === "ADMIN" 
+      ? "/admin/notifications/manage" 
+      : "/participant/notification"
+    router.push(notificationPath)
+  }
+
   return (
     <>
       <header className="w-full border-b bg-background">
@@ -211,10 +354,91 @@ export default function DashboardHeader() {
               <Moon className="h-5 w-5 hidden dark:block" />
             </Button>
 
-            {/* Notification */}
-            <Button variant="ghost" size="icon">
-              <Bell className="h-5 w-5" />
-            </Button>
+            {/* Notification Popover */}
+            <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs animate-pulse"
+                    >
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h3 className="font-semibold">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <Badge variant="secondary">{unreadCount} new</Badge>
+                  )}
+                </div>
+                <ScrollArea className="h-[400px]">
+                  {notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                      <Bell className="h-12 w-12 mb-2 opacity-50" />
+                      <p className="text-sm">No notifications yet</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {notifications.slice(0, 5).map((notification) => (
+                        <div
+                          key={notification.id}
+                          onClick={() => handleNotificationClick(notification)}
+                          className={cn(
+                            "p-4 hover:bg-muted/50 cursor-pointer transition-colors",
+                            !notification.isRead && "bg-primary/5"
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={cn(
+                              "mt-0.5 h-2 w-2 rounded-full flex-shrink-0",
+                              !notification.isRead ? "bg-primary" : "bg-transparent"
+                            )} />
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className={cn(
+                                  "text-sm font-medium leading-none",
+                                  !notification.isRead && "text-primary"
+                                )}>
+                                  {notification.title}
+                                </p>
+                                <Badge 
+                                  variant="outline" 
+                                  className={cn("text-xs flex-shrink-0", getTypeColor(notification.type))}
+                                >
+                                  {notification.type}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {notification.message}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatTimeAgo(notification.createdAt)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+                {notifications.length > 0 && (
+                  <div className="p-2 border-t">
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      onClick={handleViewAllNotifications}
+                    >
+                      View All Notifications
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
 
             {/* Profile Dropdown */}
             <DropdownMenu>

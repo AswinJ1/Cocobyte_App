@@ -26,7 +26,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Users, UserPlus, Trash2, RefreshCw, Mail, Calendar } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { 
+  Users, 
+  UserPlus, 
+  Trash2, 
+  RefreshCw, 
+  Mail, 
+  Calendar,
+  MoreVertical,
+  Edit,
+  Eye,
+  UserX
+} from 'lucide-react'
 
 interface User {
   id: string
@@ -53,10 +72,6 @@ interface User {
     gender?: string
   }
 }
-interface UserFormProps {
-  onSuccess?: () => void;
-  // existing props
-}
 
 const UsersPage = () => {
   const { data: session } = useSession()
@@ -65,6 +80,7 @@ const UsersPage = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
 
   useEffect(() => {
@@ -95,6 +111,20 @@ const UsersPage = () => {
     }
   }
 
+  const handleCreateUser = () => {
+    setEditingUser(null)
+    setShowForm(true)
+  }
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user)
+    setShowForm(true)
+  }
+
+  const handleViewUser = (userId: string) => {
+    router.push(`/admin/users/${userId}`)
+  }
+
   const handleDeleteUser = async (userId: string, userRole: string) => {
     if (userRole === "ADMIN") {
       alert("Cannot delete admin users")
@@ -123,6 +153,12 @@ const UsersPage = () => {
     } finally {
       setDeleteLoading(null)
     }
+  }
+
+  const handleFormSuccess = () => {
+    setShowForm(false)
+    setEditingUser(null)
+    fetchUsers()
   }
 
   const getRoleVariant = (role: string): "default" | "secondary" | "destructive" | "outline" => {
@@ -209,22 +245,29 @@ const UsersPage = () => {
             <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
             <p className="text-muted-foreground mt-1">Manage system users and their roles</p>
           </div>
-          <Button onClick={() => setShowForm(!showForm)}>
+          <Button onClick={handleCreateUser}>
             <UserPlus className="h-4 w-4 mr-2" />
-            {showForm ? "Hide Form" : "Create User"}
+            Create User
           </Button>
         </div>
 
-        {/* Create User Form Dialog */}
+        {/* Create/Edit User Form Dialog */}
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create New User</DialogTitle>
+              <DialogTitle>
+                {editingUser ? "Edit User" : "Create New User"}
+              </DialogTitle>
               <DialogDescription>
-                Add a new user to the system. Fill in the required information below.
+                {editingUser 
+                  ? "Update the user information below." 
+                  : "Add a new user to the system. Fill in the required information below."}
               </DialogDescription>
             </DialogHeader>
-            <UserForm />
+            <UserForm 
+              editingUser={editingUser}
+              onSuccess={handleFormSuccess}
+            />
           </DialogContent>
         </Dialog>
 
@@ -358,18 +401,38 @@ const UsersPage = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          {user.role !== "ADMIN" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteUser(user.id, user.role)}
-                              disabled={deleteLoading === user.id}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              {deleteLoading === user.id ? "Deleting..." : "Delete"}
-                            </Button>
-                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleViewUser(user.id)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit User
+                              </DropdownMenuItem>
+                              {user.role !== "ADMIN" && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteUser(user.id, user.role)}
+                                    disabled={deleteLoading === user.id}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    {deleteLoading === user.id ? "Deleting..." : "Delete User"}
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}

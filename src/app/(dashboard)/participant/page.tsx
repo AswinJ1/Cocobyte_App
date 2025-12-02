@@ -21,7 +21,8 @@ import {
   ExternalLink,
   CheckCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  Map
 } from "lucide-react"
 
 interface ParticipantProfile {
@@ -100,20 +101,19 @@ export default function ParticipantDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-600" />
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-          <DashboardHeader />
-      
+      <DashboardHeader />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Error Message */}
@@ -124,13 +124,13 @@ export default function ParticipantDashboard() {
         )}
 
         {/* Welcome Section */}
-        <Card className="mb-8">
+        <Card className="mb-8 shadow-lg border-none bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
           <CardContent className="p-6">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Welcome back, {profile?.participant?.name?.split(" ")[0] || "Participant"}! 👋
               </h2>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
                 Here's your hostel information and essential details
               </p>
             </div>
@@ -140,24 +140,26 @@ export default function ParticipantDashboard() {
         {/* Hostel Information Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Hostel Name */}
-          <Card>
+          <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-blue-600" />
+                <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                  <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
                 Hostel Details
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Hostel Name</p>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="text-sm text-muted-foreground mb-1">Hostel Name</p>
+                <p className="text-lg font-semibold">
                   {profile?.participant?.hostelName || "Not assigned"}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-1">UID</p>
+                <p className="text-sm text-muted-foreground mb-1">UID</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-lg font-semibold text-gray-900">{profile?.uid}</p>
+                  <p className="text-lg font-semibold font-mono">{profile?.uid}</p>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -175,26 +177,28 @@ export default function ParticipantDashboard() {
           </Card>
 
           {/* WiFi Credentials */}
-          <Card>
+          <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Wifi className="h-5 w-5 text-green-600" />
+                <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                  <Wifi className="h-5 w-5 text-green-600 dark:text-green-400" />
+                </div>
                 WiFi Credentials
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                 <div>
-                <p className="text-sm text-gray-600 mb-1">WiFi UserName</p>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">WiFi Username</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-lg font-mono font-semibold text-gray-900">
-                    {profile?.participant?.wifiusername||"Unknown UserName"}
+                  <p className="text-lg font-mono font-semibold">
+                    {profile?.participant?.wifiusername || "Unknown Username"}
                   </p>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(profile?.participant?.wifiusername || "", "wifi")}
+                    onClick={() => copyToClipboard(profile?.participant?.wifiusername || "", "username")}
                   >
-                    {copiedField === "wifi" ? (
+                    {copiedField === "username" ? (
                       <CheckCircle className="h-4 w-4 text-green-600" />
                     ) : (
                       <Copy className="h-4 w-4" />
@@ -203,9 +207,9 @@ export default function ParticipantDashboard() {
                 </div>
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-1">WiFi Password</p>
+                <p className="text-sm text-muted-foreground mb-1">WiFi Password</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-lg font-mono font-semibold text-gray-900">
+                  <p className="text-lg font-mono font-semibold">
                     {showWifiPassword ? profile?.participant?.wifiPassword : "••••••••"}
                   </p>
                   <Button
@@ -222,9 +226,9 @@ export default function ParticipantDashboard() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(profile?.participant?.wifiPassword || "", "wifi")}
+                    onClick={() => copyToClipboard(profile?.participant?.wifiPassword || "", "password")}
                   >
-                    {copiedField === "wifi" ? (
+                    {copiedField === "password" ? (
                       <CheckCircle className="h-4 w-4 text-green-600" />
                     ) : (
                       <Copy className="h-4 w-4" />
@@ -236,18 +240,20 @@ export default function ParticipantDashboard() {
           </Card>
 
           {/* Contact Information */}
-          <Card>
+          <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Phone className="h-5 w-5 text-orange-600" />
+                <div className="h-10 w-10 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
+                  <Phone className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                </div>
                 Contact Information
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Contact Number</p>
+                <p className="text-sm text-muted-foreground mb-1">Contact Number</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-lg font-semibold text-gray-900">
+                  <p className="text-lg font-semibold">
                     {profile?.participant?.contactNumber || "Not provided"}
                   </p>
                   {profile?.participant?.contactNumber && (
@@ -266,17 +272,19 @@ export default function ParticipantDashboard() {
                 </div>
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-1">Email</p>
-                <p className="text-lg font-semibold text-gray-900">{profile?.email}</p>
+                <p className="text-sm text-muted-foreground mb-1">Email</p>
+                <p className="text-lg font-semibold">{profile?.email}</p>
               </div>
             </CardContent>
           </Card>
 
           {/* Location */}
-          <Card>
+          <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-red-600" />
+                <div className="h-10 w-10 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                  <MapPin className="h-5 w-5 text-red-600 dark:text-red-400" />
+                </div>
                 Hostel Location
               </CardTitle>
             </CardHeader>
@@ -286,20 +294,47 @@ export default function ParticipantDashboard() {
                   href={profile.participant.hostelLocation}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                 >
                   <span className="text-lg font-semibold">View on Google Maps</span>
                   <ExternalLink className="h-5 w-5" />
                 </a>
               ) : (
-                <p className="text-gray-500">Location not provided</p>
+                <p className="text-muted-foreground">Location not provided</p>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Account Information */}
-     
+        {/* Amritapuri Campus Map */}
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                <Map className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              Amritapuri Campus Location
+            </CardTitle>
+            <CardDescription>
+              Interactive map showing hostel locations and campus facilities
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="flex-1">
+                        <div className="sticky top-[10vw] w-full px-[2vw] max-md:mt-[6vw] max-md:mb-[2vw]">
+                            <iframe 
+                                width="100%" 
+                                height="" 
+                                className="h-[700px] max-md:h-[500px]"
+                                title="map"
+                                src="https://www.google.com/maps/d/embed?mid=1Tla0OCvXmOd0oR9VD_lIqDL2DnQ&ehbc=2E312F"
+                                //src="https://maps.google.com/maps?width=100%&amp;height=600&amp;hl=en&amp;q=9.09389,76.49181&amp;ie=UTF8&amp;t=&amp;z=14&amp;iwloc=B&amp;output=embed"
+                                />
+                        </div>
+                        {/* <div className="bg-blue-600 sticky top-[10vw] w-full">HELlo</div> */}
+                    </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   )
