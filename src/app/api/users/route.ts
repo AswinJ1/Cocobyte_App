@@ -59,6 +59,8 @@ export async function POST(request: NextRequest) {
       name,
       gender,
       college,
+      siteName,
+      teamName,
       hostelName,
       roomNumber,
       wifiusername,
@@ -112,6 +114,8 @@ export async function POST(request: NextRequest) {
               name,
               college,
               gender: gender || "male",
+              siteName: siteName || "",
+              teamName: teamName || "",
               hostelName: hostelName || "",
               roomNumber: roomNumber || "",
               wifiusername: wifiusername || "",
@@ -183,12 +187,13 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log("Update request body:", body)
 
     const {
       name,
       gender,
       college,
+      siteName,
+      teamName,
       hostelName,
       roomNumber,
       wifiusername,
@@ -214,9 +219,6 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    console.log("Updating user:", userId)
-    console.log("New password provided:", !!newPassword)
-
     // Prepare base update data
     const userUpdateData: any = {}
 
@@ -230,7 +232,6 @@ export async function PATCH(request: NextRequest) {
       }
       const hashedPassword = await bcrypt.hash(newPassword, 10)
       userUpdateData.password = hashedPassword
-      console.log("Password will be updated")
     }
 
     let updatedUser
@@ -242,14 +243,33 @@ export async function PATCH(request: NextRequest) {
       if (name !== undefined) participantUpdateData.name = name
       if (gender !== undefined) participantUpdateData.gender = gender
       if (college !== undefined) participantUpdateData.college = college
+      
+      // CRITICAL: Prevent siteName from being changed once set
+      const existingSiteName = user.participant?.siteName?.trim()
+      if (existingSiteName && existingSiteName !== "") {
+        // Site is already set - use existing value, ignore any updates
+        participantUpdateData.siteName = existingSiteName
+        
+        // Optional: Log warning if someone tried to change it
+        if (siteName && siteName !== existingSiteName) {
+          console.warn(
+            `Attempt to change locked siteName from "${existingSiteName}" to "${siteName}" for user ${userId}`
+          )
+        }
+      } else {
+        // Site is not set yet - allow setting it for the first time
+        if (siteName !== undefined) {
+          participantUpdateData.siteName = siteName
+        }
+      }
+      
+      if (teamName !== undefined) participantUpdateData.teamName = teamName
       if (hostelName !== undefined) participantUpdateData.hostelName = hostelName
       if (roomNumber !== undefined) participantUpdateData.roomNumber = roomNumber
       if (wifiusername !== undefined) participantUpdateData.wifiusername = wifiusername
       if (wifiPassword !== undefined) participantUpdateData.wifiPassword = wifiPassword
       if (hostelLocation !== undefined) participantUpdateData.hostelLocation = hostelLocation
       if (contactNumber !== undefined) participantUpdateData.contactNumber = contactNumber
-
-      console.log("Participant update data:", participantUpdateData)
 
       // Update participant user
       updatedUser = await prisma.user.update({
@@ -271,8 +291,6 @@ export async function PATCH(request: NextRequest) {
       if (name !== undefined) adminUpdateData.name = name
       if (gender !== undefined) adminUpdateData.gender = gender
 
-      console.log("Admin update data:", adminUpdateData)
-
       // Update admin user
       updatedUser = await prisma.user.update({
         where: { id: userId },
@@ -293,7 +311,6 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    console.log("User updated successfully")
     return NextResponse.json(updatedUser)
   } catch (error) {
     console.error("Error updating user:", error)

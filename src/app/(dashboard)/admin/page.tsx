@@ -22,10 +22,12 @@ import {
   Activity,
   LogIn,
   Globe,
-  Monitor
+  Monitor,
+  MapPin,
+  UsersRound
 } from "lucide-react"
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement } from 'chart.js'
-import { Pie, Bar, Line } from 'react-chartjs-2'
+import { Pie, Bar, Line, Doughnut } from 'react-chartjs-2'
 import { SearchBar } from "@/components/search-bar"
 import DashboardHeader from "@/components/dashboard-header"
 
@@ -42,6 +44,10 @@ interface Stats {
 
 interface User {
   role: string
+  participant?: {
+    siteName?: string
+    teamName?: string
+  }
 }
 
 interface LoginLog {
@@ -118,6 +124,90 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Get participants only
+  const participants = users.filter(u => u.role === 'PARTICIPANT' && u.participant)
+
+  // Site distribution data
+  const siteDistribution = participants.reduce((acc: { [key: string]: number }, user) => {
+    const site = user.participant?.siteName || 'Not Set'
+    acc[site] = (acc[site] || 0) + 1
+    return acc
+  }, {})
+
+  const siteData = {
+    labels: Object.keys(siteDistribution),
+    datasets: [
+      {
+        label: 'Participants by Site',
+        data: Object.values(siteDistribution),
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.8)',   // Blue - Mysuru
+          'rgba(34, 197, 94, 0.8)',    // Green - Amritapuri
+          'rgba(251, 191, 36, 0.8)',   // Yellow - Coimbatore
+          'rgba(168, 85, 247, 0.8)',   // Purple - Bangalore
+          'rgba(156, 163, 175, 0.8)',  // Gray - Not Set
+        ],
+        borderColor: [
+          'rgba(59, 130, 246, 1)',
+          'rgba(34, 197, 94, 1)',
+          'rgba(251, 191, 36, 1)',
+          'rgba(168, 85, 247, 1)',
+          'rgba(156, 163, 175, 1)',
+        ],
+        borderWidth: 2,
+      },
+    ],
+  }
+
+  // Team distribution data - Top 10 teams for pie chart
+  const teamDistribution = participants.reduce((acc: { [key: string]: number }, user) => {
+    const team = user.participant?.teamName?.trim() || ''
+    if (team && team !== '' && team !== 'No Team') {
+      acc[team] = (acc[team] || 0) + 1
+    }
+    return acc
+  }, {})
+
+  // Sort teams by count and get top 10
+  const sortedTeams = Object.entries(teamDistribution)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10)
+
+  const teamData = {
+    labels: sortedTeams.map(([team]) => team),
+    datasets: [
+      {
+        label: 'Team Members',
+        data: sortedTeams.map(([, count]) => count),
+        backgroundColor: [
+          'rgba(239, 68, 68, 0.8)',    // Red
+          'rgba(34, 197, 94, 0.8)',    // Green
+          'rgba(59, 130, 246, 0.8)',   // Blue
+          'rgba(251, 191, 36, 0.8)',   // Yellow
+          'rgba(168, 85, 247, 0.8)',   // Purple
+          'rgba(236, 72, 153, 0.8)',   // Pink
+          'rgba(14, 165, 233, 0.8)',   // Cyan
+          'rgba(132, 204, 22, 0.8)',   // Lime
+          'rgba(249, 115, 22, 0.8)',   // Orange
+          'rgba(99, 102, 241, 0.8)',   // Indigo
+        ],
+        borderColor: [
+          'rgba(239, 68, 68, 1)',
+          'rgba(34, 197, 94, 1)',
+          'rgba(59, 130, 246, 1)',
+          'rgba(251, 191, 36, 1)',
+          'rgba(168, 85, 247, 1)',
+          'rgba(236, 72, 153, 1)',
+          'rgba(14, 165, 233, 1)',
+          'rgba(132, 204, 22, 1)',
+          'rgba(249, 115, 22, 1)',
+          'rgba(99, 102, 241, 1)',
+        ],
+        borderWidth: 2,
+      },
+    ],
   }
 
   // Calculate user role distribution
@@ -241,6 +331,43 @@ export default function AdminDashboard() {
         labels: {
           padding: 15,
           font: {
+            size: 11,
+          },
+          boxWidth: 12,
+          boxHeight: 12,
+        },
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFont: {
+          size: 14,
+        },
+        bodyFont: {
+          size: 13,
+        },
+        callbacks: {
+          label: function(context: any) {
+            const label = context.label || '';
+            const value = context.parsed || 0;
+            const total = context.dataset.data.reduce((acc: number, val: number) => acc + val, 0);
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `${label}: ${value} (${percentage}%)`;
+          }
+        }
+      },
+    },
+  }
+
+  const barChartOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: {
+        position: 'bottom' as const,
+        labels: {
+          padding: 15,
+          font: {
             size: 12,
           },
         },
@@ -256,10 +383,6 @@ export default function AdminDashboard() {
         },
       },
     },
-  }
-
-  const barChartOptions = {
-    ...chartOptions,
     scales: {
       y: {
         beginAtZero: true,
@@ -271,9 +394,9 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen  bg-background">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-    <DashboardHeader />
+      <DashboardHeader />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Error */}
@@ -365,11 +488,14 @@ export default function AdminDashboard() {
         {/* Charts Section */}
         {!loading && (
           <>
-            {/* First Row - User & Login Activity */}
+            {/* First Row - User, Login, & Device */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Users by Role</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-blue-600" />
+                    Users by Role
+                  </CardTitle>
                   <CardDescription>Distribution of admin and participant users</CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center">
@@ -381,7 +507,10 @@ export default function AdminDashboard() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Login Activity</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-green-600" />
+                    Login Activity
+                  </CardTitle>
                   <CardDescription>Successful vs failed login attempts</CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center">
@@ -393,7 +522,10 @@ export default function AdminDashboard() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Device Usage</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Monitor className="h-5 w-5 text-purple-600" />
+                    Device Usage
+                  </CardTitle>
                   <CardDescription>Login by device type</CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center">
@@ -404,7 +536,40 @@ export default function AdminDashboard() {
               </Card>
             </div>
 
-            {/* Second Row - Browser & Location */}
+            {/* Second Row - Site & Team Distribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-blue-600" />
+                    Participants by Site
+                  </CardTitle>
+                  <CardDescription>Distribution across different sites</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <div className="w-full max-w-[350px]">
+                    <Doughnut data={siteData} options={chartOptions} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UsersRound className="h-5 w-5 text-purple-600" />
+                     Teams
+                  </CardTitle>
+                  <CardDescription>Teams with most members</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <div className="w-full max-w-[350px]">
+                    <Pie data={teamData} options={chartOptions} />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Third Row - Browser & Location */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -425,6 +590,26 @@ export default function AdminDashboard() {
                   <Bar data={countryData} options={barChartOptions} />
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Site Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {Object.entries(siteDistribution).map(([site, count]) => (
+                <Card key={site} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{site}</CardTitle>
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{count}</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {participants.length > 0 
+                        ? `${((count / participants.length) * 100).toFixed(1)}% of participants`
+                        : '0% of participants'}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </>
         )}
@@ -462,22 +647,6 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           </Link>
-
-          {/* <Link href="/admin/create-user">
-            <Card className="hover:bg-muted/50 hover:shadow-lg transition-all cursor-pointer h-full">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserPlus className="h-5 w-5 text-green-600" />
-                  Create User
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Add new participant users
-                </p>
-              </CardContent>
-            </Card>
-          </Link> */}
         </div>
       </main>
     </div>

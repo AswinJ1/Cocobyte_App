@@ -7,6 +7,7 @@ import { useSession, signOut } from "next-auth/react"
 import { Sun, Moon, Bell, Globe, ChevronDown } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import Image from "next/image"
 import {
   CommandDialog,
   CommandEmpty,
@@ -321,11 +322,31 @@ export default function DashboardHeader() {
   return (
     <>
       <header className="w-full border-b bg-background">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-4">
           
-          {/* LEFT: Search Bar */}
-          <div 
-            className="relative w-72 cursor-pointer"
+          {/* LEFT: Logo + Name + Search Bar */}
+          <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+            {/* Logo + Brand Name */}
+            <div 
+              className="flex items-center gap-2 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => router.push(`/${userRole.toLowerCase()}`)}
+            >
+              <Image
+                src="/icpc_foundation.png"
+                alt="ICPC Foundation"
+                width={60}
+                height={60}
+                className="h-15 sm:h-15 w-auto"
+                priority
+              />
+              <span className="text-lg sm:text-xl font-bold  hidden sm:block">
+                COCOBYTE
+              </span>
+            </div>
+
+            {/* Search Bar */}
+             <div 
+            className="relative w-72 cursor-pointer hidden sm:block"
             onClick={() => setOpen(true)}
           >
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -335,12 +356,23 @@ export default function DashboardHeader() {
               readOnly
             />
           </div>
+          </div>
 
-          {/* RIGHT: Language / Theme / Notifications / Profile */}
-          <div className="flex items-center gap-4">
+          {/* RIGHT: Actions */}
+          <div className="flex items-center gap-2 sm:gap-4">
             
-            {/* Language Icon */}
-            <Button variant="ghost" size="icon">
+            {/* Mobile Search Icon */}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="md:hidden"
+              onClick={() => setOpen(true)}
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+
+            {/* Language Icon - Hidden on small screens */}
+            <Button variant="ghost" size="icon" className="hidden lg:flex">
               <Globe className="h-5 w-5" />
             </Button>
 
@@ -443,21 +475,21 @@ export default function DashboardHeader() {
             {/* Profile Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors">
-                  <Avatar className="h-10 w-10 ring-2 ring-primary/20 hover:ring-primary/40 transition-all border-2 border-background shadow-sm">
+                <div className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 sm:p-2 rounded-lg transition-colors">
+                  <Avatar className="h-8 w-8 sm:h-10 sm:w-10 ring-2 ring-primary/20 hover:ring-primary/40 transition-all border-2 border-background shadow-sm">
                     {getAvatarUrl() ? (
                       <AvatarImage src={getAvatarUrl()!} alt={getUserName()} />
                     ) : (
-                      <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-semibold">
+                      <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-semibold text-xs sm:text-sm">
                         {profile ? getInitials(getUserName()) : userInitial}
                       </AvatarFallback>
                     )}
                   </Avatar>
-                  <div className="hidden md:block text-left">
+                  <div className="hidden lg:block text-left">
                     <p className="text-sm font-medium leading-none">{getUserName()}</p>
                     <p className="text-xs text-muted-foreground">{userRole}</p>
                   </div>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  <ChevronDown className="h-4 w-4 text-muted-foreground hidden lg:block" />
                 </div>
               </DropdownMenuTrigger>
               
@@ -465,7 +497,7 @@ export default function DashboardHeader() {
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{getUserName()}</p>
-                    <p className="text-xs text-muted-foreground">{userEmail}</p>
+                    <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
                     <Badge variant={getRoleVariant(userRole as string)} className="text-xs mt-1 w-fit">
                       {userRole}
                     </Badge>
@@ -476,12 +508,14 @@ export default function DashboardHeader() {
                   onClick={() => router.push(`/${userRole.toLowerCase()}/profile`)}
                   className="cursor-pointer"
                 >
+                  <User className="mr-2 h-4 w-4" />
                   View Profile
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => router.push(`/${userRole.toLowerCase()}`)}
                   className="cursor-pointer"
                 >
+                  <Home className="mr-2 h-4 w-4" />
                   Dashboard
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

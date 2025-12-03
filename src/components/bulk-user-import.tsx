@@ -15,11 +15,9 @@ import {
   FileSpreadsheet,
   Copy,
   FileDown,
-  Mail,
   Eye,
   EyeOff,
-  Check,
-  X
+  Check
 } from "lucide-react"
 import {
   Table,
@@ -29,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface BulkImportResult {
   success: number
@@ -42,7 +41,9 @@ interface BulkImportResult {
     email: string
     password: string
     name: string
-    uid: string  // Add this
+    uid: string
+    siteName?: string
+    teamName?: string
   }>
 }
 
@@ -61,16 +62,16 @@ export default function BulkUserImport({ onSuccess }: BulkUserImportProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const downloadTemplate = () => {
-    const csvContent = `name,email,college,hostelName,roomNumber,wifiusername,wifiPassword,hostelLocation,contactNumber,gender
-John Doe,john@example.com,MIT,Hostel A,101,wifi_john,pass123,https://maps.google.com,1234567890,male
-Jane Smith,jane@example.com,Stanford,Hostel B,202,wifi_jane,pass456,https://maps.google.com,0987654321,female
-Bob Johnson,bob@example.com,Harvard,Hostel C,303,wifi_bob,pass789,https://maps.google.com,1122334455,male`
+    const csvContent = `name,email,college,siteName,teamName,hostelName,roomNumber,wifiusername,wifiPassword,hostelLocation,contactNumber,gender
+John Doe,john@example.com,MIT,Amritapuri,Team Alpha,Hostel A,101,wifi_john,pass123,https://maps.google.com,1234567890,male
+Jane Smith,jane@example.com,Stanford,Amritapuri,Team Beta,Hostel B,202,wifi_jane,pass456,https://maps.google.com,0987654321,female
+Bob Johnson,bob@example.com,Harvard,Coimbatore,Team Gamma,Hostel C,303,wifi_bob,pass789,https://maps.google.com,1122334455,male`
 
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'data.csv'
+    a.download = 'user_import_template.csv'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -80,8 +81,8 @@ Bob Johnson,bob@example.com,Harvard,Hostel C,303,wifi_bob,pass789,https://maps.g
   const downloadPasswordsCSV = () => {
     if (!result?.users || result.users.length === 0) return
 
-    const csvContent = `Name,Email,UID,Password,Login URL\n${result.users.map(u => 
-      `"${u.name}","${u.email}","${u.uid}","${u.password}","${window.location.origin}/login"`
+    const csvContent = `Name,Email,UID,Site Name,Team Name,Password,Login URL\n${result.users.map(u => 
+      `"${u.name}","${u.email}","${u.uid}","${u.siteName || 'N/A'}","${u.teamName || 'N/A'}","${u.password}","${window.location.origin}/login"`
     ).join('\n')}`
 
     const blob = new Blob([csvContent], { type: 'text/csv' })
@@ -107,7 +108,7 @@ Bob Johnson,bob@example.com,Harvard,Hostel C,303,wifi_bob,pass789,https://maps.g
     if (!result?.users) return
 
     const text = result.users.map(u => 
-      `Name: ${u.name}\nEmail: ${u.email}\nUID: ${u.uid}\nPassword: ${u.password}\nLogin: ${window.location.origin}/login\n`
+      `Name: ${u.name}\nEmail: ${u.email}\nUID: ${u.uid}\nSite: ${u.siteName || 'N/A'}\nTeam: ${u.teamName || 'N/A'}\nPassword: ${u.password}\nLogin: ${window.location.origin}/login\n`
     ).join('\n---\n\n')
 
     navigator.clipboard.writeText(text)
@@ -175,6 +176,8 @@ Bob Johnson,bob@example.com,Harvard,Hostel C,303,wifi_bob,pass789,https://maps.g
             <p><span class="label">Name:</span><span class="value">${u.name}</span></p>
             <p><span class="label">Email:</span><span class="value">${u.email}</span></p>
             <p><span class="label">UID:</span><span class="value uid">${u.uid}</span></p>
+            <p><span class="label">Site Name:</span><span class="value">${u.siteName || 'N/A'}</span></p>
+            <p><span class="label">Team Name:</span><span class="value">${u.teamName || 'N/A'}</span></p>
             <p><span class="label">Password:</span><span class="value password">${u.password}</span></p>
             <p><span class="label">Login URL:</span><span class="value">${window.location.origin}/login</span></p>
           </div>
@@ -242,8 +245,6 @@ Bob Johnson,bob@example.com,Harvard,Hostel C,303,wifi_bob,pass789,https://maps.g
       if (response.ok) {
         setResult(data)
         setUploadProgress(100)
-        // REMOVED: Auto-reload functionality
-        // User must manually click "Finish" button
       } else {
         setError(data.error || 'Failed to import users')
       }
@@ -267,10 +268,10 @@ Bob Johnson,bob@example.com,Harvard,Hostel C,303,wifi_bob,pass789,https://maps.g
           <div className="space-y-2">
             <p className="font-medium">How it works:</p>
             <ul className="list-disc list-inside text-sm space-y-1">
-              <li><strong>Upload CSV</strong> with name, email, college columns</li>
+              <li><strong>Required:</strong> name, email, college</li>
+              <li><strong>Optional:</strong> siteName, teamName, hostel details</li>
               <li><strong>Random secure passwords</strong> generated automatically</li>
               <li><strong>Download credentials</strong> before closing this dialog</li>
-              <li><strong>Share credentials</strong> individually with each user</li>
             </ul>
           </div>
         </AlertDescription>
@@ -405,7 +406,7 @@ Bob Johnson,bob@example.com,Harvard,Hostel C,303,wifi_bob,pass789,https://maps.g
                   </div>
                   
                   {/* Credentials Table */}
-                  <div className="max-h-96 overflow-y-auto border rounded-md bg-white dark:bg-gray-900">
+                  <ScrollArea className="h-96 rounded-md border bg-white dark:bg-gray-900">
                     <Table>
                       <TableHeader className="sticky top-0 bg-gray-50 dark:bg-gray-800">
                         <TableRow>
@@ -413,6 +414,8 @@ Bob Johnson,bob@example.com,Harvard,Hostel C,303,wifi_bob,pass789,https://maps.g
                           <TableHead>Name</TableHead>
                           <TableHead>Email</TableHead>
                           <TableHead>UID</TableHead>
+                          <TableHead>Site</TableHead>
+                          <TableHead>Team</TableHead>
                           <TableHead>Password</TableHead>
                           <TableHead className="w-[50px]"></TableHead>
                         </TableRow>
@@ -427,6 +430,12 @@ Bob Johnson,bob@example.com,Harvard,Hostel C,303,wifi_bob,pass789,https://maps.g
                             <TableCell className="text-sm">{user.email}</TableCell>
                             <TableCell className="font-mono text-sm font-bold text-blue-600">
                               {user.uid}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {user.siteName || <span className="text-muted-foreground">-</span>}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {user.teamName || <span className="text-muted-foreground">-</span>}
                             </TableCell>
                             <TableCell className="font-mono text-sm">
                               {showPasswords ? user.password : '••••••••••••'}
@@ -450,7 +459,7 @@ Bob Johnson,bob@example.com,Harvard,Hostel C,303,wifi_bob,pass789,https://maps.g
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
+                  </ScrollArea>
 
                   {/* Sharing Instructions */}
                   <div className="text-sm bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-3">
@@ -475,14 +484,16 @@ Bob Johnson,bob@example.com,Harvard,Hostel C,303,wifi_bob,pass789,https://maps.g
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 <div className="font-medium mb-2">Import Errors:</div>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {result.errors.map((err, index) => (
-                    <div key={index} className="text-sm border-l-2 border-red-500 pl-2">
-                      <div className="font-medium">Row {err.row}: {err.email}</div>
-                      <div className="text-red-600 dark:text-red-400">{err.error}</div>
-                    </div>
-                  ))}
-                </div>
+                <ScrollArea className="h-64">
+                  <div className="space-y-2">
+                    {result.errors.map((err, index) => (
+                      <div key={index} className="text-sm border-l-2 border-red-500 pl-2">
+                        <div className="font-medium">Row {err.row}: {err.email}</div>
+                        <div className="text-red-600 dark:text-red-400">{err.error}</div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </AlertDescription>
             </Alert>
           )}

@@ -41,6 +41,8 @@ model Participant {
   userId         String   @unique
   name           String
   college        String
+  teamName       String?
+  siteName       String?
   hostelName     String?
   wifiusername   String?
   wifiPassword   String?

@@ -35,6 +35,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { 
   Users, 
   UserPlus, 
@@ -52,7 +59,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  MapPin,
+  UsersRound,
+  X
 } from 'lucide-react'
 import BulkUserImport from '@/components/bulk-user-import'
 import {
@@ -84,6 +94,8 @@ interface User {
     college?: string
     avatarUrl?: string
     gender?: string
+    siteName?: string
+    teamName?: string
   }
   admin?: {
     name: string
@@ -106,10 +118,14 @@ const UsersPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string; role: string } | null>(null)
   
-  // Search and Pagination
+  // Search and Filters
   const [searchQuery, setSearchQuery] = useState("")
+  const [siteFilter, setSiteFilter] = useState<string>("all")
+  const [teamFilter, setTeamFilter] = useState<string>("")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+
+  const siteLocations = ["Mysuru", "Amritapuri", "Coimbatore", "Bangalore"]
 
   useEffect(() => {
     if (!session || (session.user.role as string) !== "ADMIN") {
@@ -121,15 +137,25 @@ const UsersPage = () => {
 
   useEffect(() => {
     filterUsers()
-  }, [users, searchQuery])
+  }, [users, searchQuery, siteFilter, teamFilter])
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery])
+  }, [searchQuery, siteFilter, teamFilter])
+
+  // Get unique team names from users
+  const uniqueTeamNames = Array.from(
+    new Set(
+      users
+        .filter(u => u.participant?.teamName && u.participant.teamName.trim() !== "")
+        .map(u => u.participant!.teamName!)
+    )
+  ).sort()
 
   const filterUsers = () => {
     let filtered = [...users]
 
+    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(user => {
@@ -137,12 +163,33 @@ const UsersPage = () => {
         const email = user.email.toLowerCase()
         const uid = user.uid?.toLowerCase() || ""
         const college = user.participant?.college?.toLowerCase() || ""
+        const siteName = user.participant?.siteName?.toLowerCase() || ""
+        const teamName = user.participant?.teamName?.toLowerCase() || ""
         
         return name.includes(query) || 
                email.includes(query) || 
                uid.includes(query) || 
-               college.includes(query)
+               college.includes(query) ||
+               siteName.includes(query) ||
+               teamName.includes(query)
       })
+    }
+
+    // Site filter
+    if (siteFilter !== "all") {
+      filtered = filtered.filter(user => {
+        if (siteFilter === "not-set") {
+          return !user.participant?.siteName || user.participant.siteName.trim() === ""
+        }
+        return user.participant?.siteName === siteFilter
+      })
+    }
+
+    // Team filter
+    if (teamFilter && teamFilter.trim() !== "") {
+      filtered = filtered.filter(user => 
+        user.participant?.teamName?.toLowerCase().includes(teamFilter.toLowerCase())
+      )
     }
 
     setFilteredUsers(filtered)
@@ -167,6 +214,14 @@ const UsersPage = () => {
       setIsLoading(false)
     }
   }
+
+  const clearFilters = () => {
+    setSearchQuery("")
+    setSiteFilter("all")
+    setTeamFilter("")
+  }
+
+  const hasActiveFilters = searchQuery !== "" || siteFilter !== "all" || teamFilter !== ""
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
@@ -281,7 +336,11 @@ const UsersPage = () => {
       return `${user.student.clubName} • ${user.student.hostelName} • Room ${user.student.roomNo}`
     }
     if (user.participant) {
-      return user.participant.college || "Participant Member"
+      const parts = []
+      if (user.participant.college) parts.push(user.participant.college)
+      if (user.participant.siteName) parts.push(`Site: ${user.participant.siteName}`)
+      if (user.participant.teamName) parts.push(`Team: ${user.participant.teamName}`)
+      return parts.length > 0 ? parts.join(" • ") : "Participant Member"
     }
     if (user.admin) {
       return "System Administrator"
@@ -476,25 +535,106 @@ const UsersPage = () => {
         {/* Users Table */}
         <Card>
           <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-              <div className="flex-1">
-                <CardTitle className="text-lg sm:text-xl">All Users ({filteredUsers.length})</CardTitle>
-                <CardDescription className="text-sm">View and manage all system users</CardDescription>
-              </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-                <div className="relative flex-1 sm:flex-initial sm:w-64">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search users..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 text-sm"
-                  />
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                <div className="flex-1">
+                  <CardTitle className="text-lg sm:text-xl">All Users ({filteredUsers.length})</CardTitle>
+                  <CardDescription className="text-sm">View and manage all system users</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={fetchUsers} className="w-full sm:w-auto">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={fetchUsers} className="w-full sm:w-auto">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+
+              {/* Filters Section */}
+              <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* Search */}
+                  <div className="relative lg:col-span-2">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by name, email, UID, college..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 text-sm"
+                    />
+                  </div>
+
+                  {/* Site Filter */}
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                    <Select value={siteFilter} onValueChange={setSiteFilter}>
+                      <SelectTrigger className="pl-10">
+                        <SelectValue placeholder="Filter by site" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Sites</SelectItem>
+                        {siteLocations.map(site => (
+                          <SelectItem key={site} value={site}>{site}</SelectItem>
+                        ))}
+                        <SelectItem value="not-set">Not Set</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Team Filter */}
+                  <div className="relative">
+                    <UsersRound className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+                    <Input
+                      placeholder="Filter by team name"
+                      value={teamFilter}
+                      onChange={(e) => setTeamFilter(e.target.value)}
+                      className="pl-10 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Active Filters & Clear */}
+                {hasActiveFilters && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Active filters:</span>
+                    {searchQuery && (
+                      <Badge variant="secondary" className="gap-1">
+                        Search: {searchQuery}
+                        <X 
+                          className="h-3 w-3 cursor-pointer" 
+                          onClick={() => setSearchQuery("")}
+                        />
+                      </Badge>
+                    )}
+                    {siteFilter !== "all" && (
+                      <Badge variant="secondary" className="gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {siteFilter === "not-set" ? "Not Set" : siteFilter}
+                        <X 
+                          className="h-3 w-3 cursor-pointer" 
+                          onClick={() => setSiteFilter("all")}
+                        />
+                      </Badge>
+                    )}
+                    {teamFilter && (
+                      <Badge variant="secondary" className="gap-1">
+                        <UsersRound className="h-3 w-3" />
+                        Team: {teamFilter}
+                        <X 
+                          className="h-3 w-3 cursor-pointer" 
+                          onClick={() => setTeamFilter("")}
+                        />
+                      </Badge>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={clearFilters}
+                      className="h-7 text-xs"
+                    >
+                      Clear all
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -502,16 +642,16 @@ const UsersPage = () => {
             {filteredUsers.length === 0 ? (
               <div className="text-center py-12 px-4">
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  {searchQuery ? "No users found matching your search." : "No users found."}
+                <p className="text-muted-foreground mb-2">
+                  {hasActiveFilters ? "No users found matching your filters." : "No users found."}
                 </p>
-                {searchQuery && (
+                {hasActiveFilters && (
                   <Button 
-                    variant="link" 
-                    onClick={() => setSearchQuery("")}
-                    className="mt-2"
+                    variant="outline" 
+                    onClick={clearFilters}
+                    size="sm"
                   >
-                    Clear search
+                    Clear filters
                   </Button>
                 )}
               </div>
@@ -579,6 +719,18 @@ const UsersPage = () => {
                               UID: {user.uid}
                             </Badge>
                           )}
+                          {user.participant?.siteName && (
+                            <Badge variant="outline" className="text-xs">
+                              <MapPin className="h-3 w-3 mr-1" />
+                              {user.participant.siteName}
+                            </Badge>
+                          )}
+                          {user.participant?.teamName && (
+                            <Badge variant="outline" className="text-xs">
+                              <UsersRound className="h-3 w-3 mr-1" />
+                              {user.participant.teamName}
+                            </Badge>
+                          )}
                         </div>
                         <div className="text-sm text-muted-foreground truncate">
                           {getUserDetails(user)}
@@ -601,7 +753,7 @@ const UsersPage = () => {
                           <TableHead className="min-w-[200px]">User</TableHead>
                           <TableHead className="min-w-[100px]">Role</TableHead>
                           <TableHead className="min-w-[200px]">Contact</TableHead>
-                          <TableHead className="min-w-[200px]">Details</TableHead>
+                          <TableHead className="min-w-[250px]">Details</TableHead>
                           <TableHead className="min-w-[120px]">Created</TableHead>
                           <TableHead className="text-right min-w-[80px]">Actions</TableHead>
                         </TableRow>
@@ -645,8 +797,24 @@ const UsersPage = () => {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="text-sm max-w-xs truncate">
-                                {getUserDetails(user)}
+                              <div className="space-y-1">
+                                <div className="text-sm max-w-xs truncate">
+                                  {getUserDetails(user)}
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {user.participant?.siteName && (
+                                    <Badge variant="outline" className="text-xs">
+                                      <MapPin className="h-3 w-3 mr-1" />
+                                      {user.participant.siteName}
+                                    </Badge>
+                                  )}
+                                  {user.participant?.teamName && (
+                                    <Badge variant="outline" className="text-xs">
+                                      <UsersRound className="h-3 w-3 mr-1" />
+                                      {user.participant.teamName}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell>

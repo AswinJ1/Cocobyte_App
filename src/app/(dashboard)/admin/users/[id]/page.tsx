@@ -49,7 +49,9 @@ import {
   CheckCircle,
   Clock,
   Eye,
-  EyeOff
+  EyeOff,
+  Users,
+  DoorOpen
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -63,7 +65,10 @@ interface User {
     id: string
     name: string
     college?: string
+    siteName?: string
+    teamName?: string
     hostelName?: string
+    roomNumber?: string
     wifiusername?: string
     wifiPassword?: string
     hostelLocation?: string
@@ -272,18 +277,18 @@ export default function UserDetailPage() {
         {/* Header Card with User Info */}
         <Card className="mb-6 overflow-hidden border-none shadow-xl">
           {/* Gradient Background */}
-          <div className="h-32 sm:h-48  relative">
-             <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="relative w-32 h-32 sm:w-40 sm:h-40 ">
-                            <Image
-                              src="/icpc_foundation.png"
-                              alt="ICPC Foundation"
-                              fill
-                              className="object-contain"
-                              priority
-                            />
-                          </div>
-                        </div>
+          <div className="h-32 sm:h-48 relative">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative w-32 h-32 sm:w-40 sm:h-40">
+                <Image
+                  src="/icpc_foundation.png"
+                  alt="ICPC Foundation"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+            </div>
           </div>
 
           <CardContent className="relative pb-6 -mt-16 sm:-mt-20">
@@ -307,7 +312,7 @@ export default function UserDetailPage() {
               {/* User Info */}
               <div className="text-center sm:text-left flex-1">
                 <h1 className="text-3xl sm:text-4xl font-bold">{getUserDisplayName()}</h1>
-                <p className="text-muted-foreground text-lg mt-1">{user.email}</p>
+                <p className="text-muted-foreground text-lg mt-1 break-all">{user.email}</p>
                 <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
                   <Badge variant={getRoleVariant(user.role)} className="text-sm">
                     <Shield className="h-3 w-3 mr-1" />
@@ -321,6 +326,18 @@ export default function UserDetailPage() {
                     <Badge variant="outline" className="font-mono">
                       <IdCard className="h-3 w-3 mr-1" />
                       {user.uid}
+                    </Badge>
+                  )}
+                  {user.participant?.siteName && (
+                    <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20">
+                      <MapPin className="h-3 w-3 mr-1" />
+                      {user.participant.siteName}
+                    </Badge>
+                  )}
+                  {user.participant?.teamName && (
+                    <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20">
+                      <Users className="h-3 w-3 mr-1" />
+                      {user.participant.teamName}
                     </Badge>
                   )}
                 </div>
@@ -408,6 +425,30 @@ export default function UserDetailPage() {
                 </CardContent>
               </Card>
 
+              {/* Site & Team Information */}
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="h-10 w-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center">
+                      <MapPin className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    Site & Team Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <InfoItem
+                    icon={<MapPin />}
+                    label="Site Location"
+                    value={user.participant.siteName || "Not assigned"}
+                  />
+                  <InfoItem
+                    icon={<Users />}
+                    label="Team Name"
+                    value={user.participant.teamName || "Not assigned"}
+                  />
+                </CardContent>
+              </Card>
+
               {/* Hostel Information */}
               <Card className="shadow-lg">
                 <CardHeader>
@@ -423,6 +464,11 @@ export default function UserDetailPage() {
                     icon={<Building2 />}
                     label="Hostel Name"
                     value={user.participant.hostelName || "Not assigned"}
+                  />
+                  <InfoItem
+                    icon={<DoorOpen />}
+                    label="Room Number"
+                    value={user.participant.roomNumber || "Not assigned"}
                   />
                   {user.participant.hostelLocation && (
                     <div className="space-y-2">

@@ -12,7 +12,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Loader2, Save, AlertCircle, Eye, EyeOff } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Loader2, Save, AlertCircle, Eye, EyeOff, MapPin, CheckCircle2, XCircle, Info } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 
 interface UserFormProps {
@@ -25,6 +33,12 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showSiteVerification, setShowSiteVerification] = useState(false)
+  const [selectedVerificationSite, setSelectedVerificationSite] = useState("")
+  const [siteVerificationError, setSiteVerificationError] = useState<string | null>(null)
+  const [pendingFormData, setPendingFormData] = useState<any>(null)
+  const [lockedSiteName, setLockedSiteName] = useState<string>("")
+  
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -33,6 +47,8 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
     role: "PARTICIPANT",
     name: "",
     college: "",
+    siteName: "",
+    teamName: "",
     hostelName: "",
     roomNumber: "",
     wifiusername: "",
@@ -42,8 +58,17 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
     gender: "male",
   })
 
+  const siteLocations = ["Mysuru", "Amritapuri", "Coimbatore", "Bangalore"]
+
   useEffect(() => {
     if (editingUser) {
+      const existingSiteName = editingUser.participant?.siteName || ""
+      
+      // Lock the site name if it exists
+      if (existingSiteName && existingSiteName.trim() !== "") {
+        setLockedSiteName(existingSiteName.trim())
+      }
+      
       setFormData({
         email: editingUser.email,
         password: "",
@@ -52,6 +77,8 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
         role: editingUser.role,
         name: editingUser.participant?.name || editingUser.admin?.name || "",
         college: editingUser.participant?.college || "",
+        siteName: existingSiteName,
+        teamName: editingUser.participant?.teamName || "",
         hostelName: editingUser.participant?.hostelName || "",
         roomNumber: editingUser.participant?.roomNumber || "",
         wifiusername: editingUser.participant?.wifiusername || "",
@@ -60,6 +87,9 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
         contactNumber: editingUser.participant?.contactNumber || "",
         gender: editingUser.participant?.gender || editingUser.admin?.gender || "male",
       })
+    } else {
+      // Reset for new user
+      setLockedSiteName("")
     }
   }, [editingUser])
 
@@ -76,6 +106,40 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // If editing a participant with a site set, ALWAYS require verification
+    if (editingUser && editingUser.role === "PARTICIPANT" && lockedSiteName) {
+      setPendingFormData(formData)
+      setShowSiteVerification(true)
+      setSiteVerificationError(null)
+      setSelectedVerificationSite("")
+      return
+    }
+
+    // For new users, non-participants, or participants without site, proceed directly
+    await submitUserData(formData)
+  }
+
+  const handleSiteVerification = async () => {
+    if (!selectedVerificationSite) {
+      setSiteVerificationError("Please select a site location to verify")
+      return
+    }
+
+    // Verify if selected site matches the locked site name
+    if (selectedVerificationSite !== lockedSiteName) {
+      setSiteVerificationError(
+        `Site verification failed! The selected site (${selectedVerificationSite}) does not match the participant's registered site (${lockedSiteName}). Please select the correct site to proceed.`
+      )
+      return
+    }
+
+    // Site verified successfully, proceed with update
+    setShowSiteVerification(false)
+    await submitUserData(pendingFormData)
+  }
+
+  const submitUserData = async (data: any) => {
     setIsLoading(true)
     setError(null)
 
@@ -87,49 +151,51 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
       const method = editingUser ? "PATCH" : "POST"
 
       const body: any = {
-        name: formData.name,
-        gender: formData.gender,
+        name: data.name,
+        gender: data.gender,
       }
 
       if (!editingUser) {
         // Creating new user
-        body.email = formData.email
-        body.password = formData.password
-        body.uid = formData.uid
-        body.role = formData.role
+        body.email = data.email
+        body.password = data.password
+        body.uid = data.uid
+        body.role = data.role
         
         // Add participant fields for new users
-        if (formData.role === "PARTICIPANT") {
-          body.college = formData.college
-          body.hostelName = formData.hostelName
-          body.roomNumber = formData.roomNumber
-          body.wifiusername = formData.wifiusername
-          body.wifiPassword = formData.wifiPassword
-          body.hostelLocation = formData.hostelLocation
-          body.contactNumber = formData.contactNumber
+        if (data.role === "PARTICIPANT") {
+          body.college = data.college
+          body.siteName = data.siteName
+          body.teamName = data.teamName
+          body.hostelName = data.hostelName
+          body.roomNumber = data.roomNumber
+          body.wifiusername = data.wifiusername
+          body.wifiPassword = data.wifiPassword
+          body.hostelLocation = data.hostelLocation
+          body.contactNumber = data.contactNumber
         }
       } else {
         // Updating existing user
         
         // Add password update if provided
-        if (formData.newPassword && formData.newPassword.trim() !== "") {
-          console.log("Sending password update:", formData.newPassword)
-          body.newPassword = formData.newPassword
+        if (data.newPassword && data.newPassword.trim() !== "") {
+          body.newPassword = data.newPassword
         }
 
         // Add participant fields if user is a participant
         if (editingUser.role === "PARTICIPANT") {
-          body.college = formData.college
-          body.hostelName = formData.hostelName
-          body.roomNumber = formData.roomNumber
-          body.wifiusername = formData.wifiusername
-          body.wifiPassword = formData.wifiPassword
-          body.hostelLocation = formData.hostelLocation
-          body.contactNumber = formData.contactNumber
+          body.college = data.college
+          // IMPORTANT: Always send the locked siteName, never allow it to change
+          body.siteName = lockedSiteName || data.siteName
+          body.teamName = data.teamName
+          body.hostelName = data.hostelName
+          body.roomNumber = data.roomNumber
+          body.wifiusername = data.wifiusername
+          body.wifiPassword = data.wifiPassword
+          body.hostelLocation = data.hostelLocation
+          body.contactNumber = data.contactNumber
         }
       }
-
-      console.log("Submitting update:", body)
 
       const response = await fetch(url, {
         method,
@@ -139,287 +205,454 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
         body: JSON.stringify(body),
       })
 
-      const data = await response.json()
+      const responseData = await response.json()
 
       if (response.ok) {
+        // If this was a new participant and siteName was just set, lock it
+        if (!editingUser && data.role === "PARTICIPANT" && data.siteName) {
+          setLockedSiteName(data.siteName)
+        }
+        
         if (onSuccess) {
           onSuccess()
         }
       } else {
-        setError(data.error || "Failed to save user")
+        setError(responseData.error || "Failed to save user")
       }
     } catch (error) {
       console.error("Form submission error:", error)
       setError("An error occurred while saving the user")
     } finally {
       setIsLoading(false)
+      setPendingFormData(null)
     }
   }
 
+  // Site is disabled if locked
+  const isSiteDisabled = !!lockedSiteName
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+    <>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-      {/* Basic Information */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Basic Information</h3>
-        
-        <div className="space-y-2">
-          <Label htmlFor="name">Full Name *</Label>
-          <Input
-            id="name"
-            name="name"
-            value={formData.name}
-            onChange={handleInputChange}
-            placeholder="Enter full name"
-            required
-          />
-        </div>
+        {/* Basic Information */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Basic Information</h3>
+          
+          <div className="space-y-2">
+            <Label htmlFor="name">Full Name *</Label>
+            <Input
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              placeholder="Enter full name"
+              required
+            />
+          </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="email">Email *</Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            placeholder="user@example.com"
-            required
-            disabled={!!editingUser}
-          />
-          {editingUser && (
-            <p className="text-xs text-muted-foreground">Email cannot be changed</p>
-          )}
-        </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email *</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              placeholder="user@example.com"
+              required
+              disabled={!!editingUser}
+            />
+            {editingUser && (
+              <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+            )}
+          </div>
 
-        {!editingUser && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password *</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="Enter password"
-                  required
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+          {!editingUser && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password *</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Enter password"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="uid">UID</Label>
-              <Input
-                id="uid"
-                name="uid"
-                value={formData.uid}
-                onChange={handleInputChange}
-                placeholder="Unique identifier (optional)"
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="uid">UID</Label>
+                <Input
+                  id="uid"
+                  name="uid"
+                  value={formData.uid}
+                  onChange={handleInputChange}
+                  placeholder="Unique identifier (optional)"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="role">Role *</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value) => handleSelectChange("role", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PARTICIPANT">Participant</SelectItem>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label htmlFor="role">Role *</Label>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value) => handleSelectChange("role", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PARTICIPANT">Participant</SelectItem>
+                    <SelectItem value="ADMIN">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="gender">Gender *</Label>
+            <Select
+              value={formData.gender}
+              onValueChange={(value) => handleSelectChange("gender", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Password Update Section (Only for editing) */}
+        {editingUser && (
+          <>
+            <Separator />
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold">Update Password</h3>
+                <p className="text-sm text-muted-foreground">Leave blank to keep current password</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    name="newPassword"
+                    type={showNewPassword ? "text" : "password"}
+                    value={formData.newPassword}
+                    onChange={handleInputChange}
+                    placeholder="Enter new password (optional)"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {formData.newPassword && (
+                  <p className="text-xs text-muted-foreground">
+                    Password must be at least 6 characters
+                  </p>
+                )}
+              </div>
             </div>
           </>
         )}
 
-        <div className="space-y-2">
-          <Label htmlFor="gender">Gender *</Label>
-          <Select
-            value={formData.gender}
-            onValueChange={(value) => handleSelectChange("gender", value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select gender" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="male">Male</SelectItem>
-              <SelectItem value="female">Female</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Participant Details */}
+        {formData.role === "PARTICIPANT" && (
+          <>
+            <Separator />
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Participant Details</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="college">College *</Label>
+                <Input
+                  id="college"
+                  name="college"
+                  value={formData.college}
+                  onChange={handleInputChange}
+                  placeholder="College name"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="siteName">Site Name</Label>
+                  <Select
+                    value={formData.siteName}
+                    onValueChange={(value) => handleSelectChange("siteName", value)}
+                    disabled={isSiteDisabled}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select site" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Mysuru">Mysuru</SelectItem>
+                      <SelectItem value="Amritapuri">Amritapuri</SelectItem>
+                      <SelectItem value="Coimbatore">Coimbatore</SelectItem>
+                      <SelectItem value="Bangalore">Bangalore</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {isSiteDisabled && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Info className="h-3 w-3" />
+                      Site cannot be changed once set
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="teamName">Team Name</Label>
+                  <Input
+                    id="teamName"
+                    name="teamName"
+                    value={formData.teamName}
+                    onChange={handleInputChange}
+                    placeholder="Team name"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="hostelName">Hostel Name</Label>
+                  <Input
+                    id="hostelName"
+                    name="hostelName"
+                    value={formData.hostelName}
+                    onChange={handleInputChange}
+                    placeholder="Hostel name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="roomNumber">Room Number</Label>
+                  <Input
+                    id="roomNumber"
+                    name="roomNumber"
+                    value={formData.roomNumber}
+                    onChange={handleInputChange}
+                    placeholder="Room number"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="wifiusername">WiFi Username</Label>
+                  <Input
+                    id="wifiusername"
+                    name="wifiusername"
+                    value={formData.wifiusername}
+                    onChange={handleInputChange}
+                    placeholder="WiFi username"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="wifiPassword">WiFi Password</Label>
+                  <Input
+                    id="wifiPassword"
+                    name="wifiPassword"
+                    value={formData.wifiPassword}
+                    onChange={handleInputChange}
+                    placeholder="WiFi password"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="hostelLocation">Hostel Location URL</Label>
+                <Input
+                  id="hostelLocation"
+                  name="hostelLocation"
+                  value={formData.hostelLocation}
+                  onChange={handleInputChange}
+                  placeholder="https://maps.google.com/..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="contactNumber">Contact Number</Label>
+                <Input
+                  id="contactNumber"
+                  name="contactNumber"
+                  value={formData.contactNumber}
+                  onChange={handleInputChange}
+                  placeholder="Phone number"
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Submit Button */}
+        <div className="flex justify-end gap-2 pt-4">
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                {editingUser ? "Update User" : "Create User"}
+              </>
+            )}
+          </Button>
         </div>
-      </div>
+      </form>
 
-      {/* Password Update Section (Only for editing) */}
-      {editingUser && (
-        <>
-          <Separator />
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold">Update Password</h3>
-              <p className="text-sm text-muted-foreground">Leave blank to keep current password</p>
-            </div>
-            
+      {/* Site Verification Dialog */}
+      <Dialog open={showSiteVerification} onOpenChange={setShowSiteVerification}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-blue-600" />
+              Verify Site Location
+            </DialogTitle>
+            <DialogDescription>
+              Please verify the participant's site location before updating their details.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Current Site Info */}
+            <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+              <AlertDescription>
+                <div className="space-y-1">
+                  <p className="font-medium text-blue-900 dark:text-blue-100">
+                    Participant Information:
+                  </p>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-medium">Name:</span> {editingUser?.participant?.name}
+                  </p>
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    <span className="font-medium">Registered Site:</span>{" "}
+                    <span className="font-semibold text-blue-900 dark:text-blue-100">
+                      {lockedSiteName || "Not Set"}
+                    </span>
+                  </p>
+                </div>
+              </AlertDescription>
+            </Alert>
+
+            {/* Site Selection */}
             <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
-              <div className="relative">
-                <Input
-                  id="newPassword"
-                  name="newPassword"
-                  type={showNewPassword ? "text" : "password"}
-                  value={formData.newPassword}
-                  onChange={handleInputChange}
-                  placeholder="Enter new password (optional)"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                >
-                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-              </div>
-              {formData.newPassword && (
-                <p className="text-xs text-muted-foreground">
-                  Password must be at least 6 characters
-                </p>
+              <Label htmlFor="verificationSite">Select Site to Verify *</Label>
+              <Select
+                value={selectedVerificationSite}
+                onValueChange={(value) => {
+                  setSelectedVerificationSite(value)
+                  setSiteVerificationError(null)
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Choose a site location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {siteLocations.map((site) => (
+                    <SelectItem key={site} value={site}>
+                      {site}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Select the site that matches the participant's registered location
+              </p>
+            </div>
+
+            {/* Error Display */}
+            {siteVerificationError && (
+              <Alert variant="destructive">
+                <XCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  {siteVerificationError}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Success Preview */}
+            {selectedVerificationSite && 
+             selectedVerificationSite === lockedSiteName && (
+              <Alert className="bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-sm text-green-800 dark:text-green-200">
+                  ✓ Site verified successfully! You can proceed with the update.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowSiteVerification(false)
+                setSiteVerificationError(null)
+                setSelectedVerificationSite("")
+              }}
+              disabled={isLoading}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSiteVerification}
+              disabled={!selectedVerificationSite || isLoading}
+              className="w-full sm:w-auto"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Verify & Update
+                </>
               )}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Participant Details */}
-      {formData.role === "PARTICIPANT" && (
-        <>
-          <Separator />
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Participant Details</h3>
-            
-            <div className="space-y-2">
-              <Label htmlFor="college">College *</Label>
-              <Input
-                id="college"
-                name="college"
-                value={formData.college}
-                onChange={handleInputChange}
-                placeholder="College name"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="hostelName">Hostel Name</Label>
-                <Input
-                  id="hostelName"
-                  name="hostelName"
-                  value={formData.hostelName}
-                  onChange={handleInputChange}
-                  placeholder="Hostel name"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="roomNumber">Room Number</Label>
-                <Input
-                  id="roomNumber"
-                  name="roomNumber"
-                  value={formData.roomNumber}
-                  onChange={handleInputChange}
-                  placeholder="Room number"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="wifiusername">WiFi Username</Label>
-                <Input
-                  id="wifiusername"
-                  name="wifiusername"
-                  value={formData.wifiusername}
-                  onChange={handleInputChange}
-                  placeholder="WiFi username"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="wifiPassword">WiFi Password</Label>
-                <Input
-                  id="wifiPassword"
-                  name="wifiPassword"
-                  value={formData.wifiPassword}
-                  onChange={handleInputChange}
-                  placeholder="WiFi password"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="hostelLocation">Hostel Location URL</Label>
-              <Input
-                id="hostelLocation"
-                name="hostelLocation"
-                value={formData.hostelLocation}
-                onChange={handleInputChange}
-                placeholder="https://maps.google.com/..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="contactNumber">Contact Number</Label>
-              <Input
-                id="contactNumber"
-                name="contactNumber"
-                value={formData.contactNumber}
-                onChange={handleInputChange}
-                placeholder="Phone number"
-              />
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Submit Button */}
-      <div className="flex justify-end gap-2 pt-4">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              {editingUser ? "Update User" : "Create User"}
-            </>
-          )}
-        </Button>
-      </div>
-    </form>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

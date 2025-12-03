@@ -8,12 +8,14 @@ interface CSVRow {
   name: string
   email: string
   college: string
-  hostelName?: string
-  roomNumber?: string
+  sitename?: string
+  teamname?: string
+  hostelname?: string
+  roomnumber?: string
   wifiusername?: string
-  wifiPassword?: string
-  hostelLocation?: string
-  contactNumber?: string
+  wifipassword?: string
+  hostellocation?: string
+  contactnumber?: string
   gender?: string
 }
 
@@ -29,7 +31,7 @@ function generateRandomPassword(length: number = 12): string {
 
 // Generate unique UID with format ICPCAMRITA + 6 random digits
 function generateUID(): string {
-  const randomDigits = Math.floor(100000 + Math.random() * 900000) // Generates 6-digit number
+  const randomDigits = Math.floor(100000 + Math.random() * 900000)
   return `ICPCAMRITA${randomDigits}`
 }
 
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Parse header
+    // Parse header - normalize to lowercase
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
     
     // Validate required columns
@@ -97,7 +99,14 @@ export async function POST(request: NextRequest) {
       success: 0,
       failed: 0,
       errors: [] as Array<{ row: number; email: string; error: string }>,
-      users: [] as Array<{ email: string; password: string; name: string; uid: string }>
+      users: [] as Array<{ 
+        email: string
+        password: string
+        name: string
+        uid: string
+        siteName?: string
+        teamName?: string
+      }>
     }
 
     for (let i = 0; i < rows.length; i++) {
@@ -139,6 +148,17 @@ export async function POST(request: NextRequest) {
           uidExists = await prisma.user.findUnique({ where: { uid } })
         }
 
+        // Extract fields with proper handling
+        const siteName = row.sitename || ""
+        const teamName = row.teamname || ""
+        const hostelName = row.hostelname || ""
+        const roomNumber = row.roomnumber || ""
+        const wifiusername = row.wifiusername || ""
+        const wifiPassword = row.wifipassword || ""
+        const hostelLocation = row.hostellocation || ""
+        const contactNumber = row.contactnumber || ""
+        const gender = row.gender?.toLowerCase() || "male"
+
         // Create user
         await prisma.user.create({
           data: {
@@ -150,13 +170,15 @@ export async function POST(request: NextRequest) {
               create: {
                 name: row.name,
                 college: row.college,
-                gender: row.gender?.toLowerCase() || "male",
-                hostelName: row.hostelName || "",
-                roomNumber: row.roomNumber || "",
-                wifiusername: row.wifiusername || "",
-                wifiPassword: row.wifiPassword || "",
-                hostelLocation: row.hostelLocation || "",
-                contactNumber: row.contactNumber || "",
+                gender: gender,
+                siteName: siteName,
+                teamName: teamName,
+                hostelName: hostelName,
+                roomNumber: roomNumber,
+                wifiusername: wifiusername,
+                wifiPassword: wifiPassword,
+                hostelLocation: hostelLocation,
+                contactNumber: contactNumber,
               }
             }
           }
@@ -167,7 +189,9 @@ export async function POST(request: NextRequest) {
           email: row.email,
           password: randomPassword,
           name: row.name,
-          uid: uid
+          uid: uid,
+          siteName: siteName,
+          teamName: teamName
         })
       } catch (error: any) {
         results.failed++

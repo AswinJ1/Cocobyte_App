@@ -23,7 +23,8 @@ import {
   Eye,
   EyeOff,
   Map,
-  DoorOpen
+  DoorOpen,
+  Users
 } from "lucide-react"
 
 interface ParticipantProfile {
@@ -36,6 +37,8 @@ interface ParticipantProfile {
     id: string
     name: string
     college: string
+    siteName?: string
+    teamName?: string
     hostelName: string
     roomNumber: string
     wifiusername: string
@@ -45,6 +48,26 @@ interface ParticipantProfile {
     createdAt: string
     gender: "male" | "female"
     avatarUrl?: string
+  }
+}
+
+// Site-specific map embeds
+const SITE_MAPS: Record<string, { url: string; title: string }> = {
+  "Amritapuri": {
+    url: "https://www.google.com/maps/d/embed?mid=1Tla0OCvXmOd0oR9VD_lIqDL2DnQ&ehbc=2E312F",
+    title: "Amritapuri Campus Map"
+  },
+  "Mysuru": {
+    url: "https://www.google.com/maps/d/embed?mid=13fWSWJ8bscqtdqRUEi030VjKWgY&ehbc=2E312F",
+    title: "Mysuru Campus Map"
+  },
+  "Coimbatore": {
+    url: "https://www.google.com/maps/d/embed?mid=1kFElh2vG7KrAg7X6_jBgiS1uFbg&ehbc=2E312F",
+    title: "Coimbatore Campus Map"
+  },
+  "Bangalore": {
+    url: "https://www.google.com/maps/d/embed?mid=108VvwUWjN3osuiL-LvyNqmetGrQ&ehbc=2E312F",
+    title: "Bangalore Campus Map"
   }
 }
 
@@ -101,6 +124,15 @@ export default function ParticipantDashboard() {
     }
   }
 
+  const getSiteMap = () => {
+    const siteName = profile?.participant?.siteName
+    if (!siteName || !SITE_MAPS[siteName]) {
+      // Default to Amritapuri if no site or invalid site
+      return SITE_MAPS["Amritapuri"]
+    }
+    return SITE_MAPS[siteName]
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -111,6 +143,8 @@ export default function ParticipantDashboard() {
       </div>
     )
   }
+
+  const siteMap = getSiteMap()
 
   return (
     <div className="min-h-screen bg-background">
@@ -197,6 +231,74 @@ export default function ParticipantDashboard() {
                       <Copy className="h-4 w-4" />
                     )}
                   </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Site & Team Information */}
+          <Card className="shadow-lg hover:shadow-xl transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                  <MapPin className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                Site & Team Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Site Location
+                </p>
+                <div className="flex items-center gap-2">
+                  {profile?.participant?.siteName ? (
+                    <>
+                      <Badge variant="outline" className="text-base font-semibold px-3 py-1">
+                        {profile.participant.siteName}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(profile?.participant?.siteName || "", "siteName")}
+                      >
+                        {copiedField === "siteName" ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-lg text-muted-foreground">Not assigned</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Team Name
+                </p>
+                <div className="flex items-center gap-2">
+                  {profile?.participant?.teamName ? (
+                    <>
+                      <p className="text-lg font-semibold">{profile.participant.teamName}</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(profile?.participant?.teamName || "", "teamName")}
+                      >
+                        {copiedField === "teamName" ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-lg text-muted-foreground">Not assigned</p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -305,13 +407,19 @@ export default function ParticipantDashboard() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Email</p>
-                <p className="text-lg font-semibold">{profile?.email}</p>
+                <p className="text-lg font-semibold break-all">{profile?.email}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">College</p>
+                <p className="text-lg font-semibold">{profile?.participant?.college || "Not provided"}</p>
               </div>
             </CardContent>
           </Card>
+        </div>
 
-          {/* Location */}
-          <Card className="shadow-lg hover:shadow-xl transition-shadow">
+        {/* Hostel Location (if provided) */}
+        {profile?.participant?.hostelLocation && (
+          <Card className="shadow-lg mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <div className="h-10 w-10 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
@@ -321,45 +429,44 @@ export default function ParticipantDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {profile?.participant?.hostelLocation ? (
-                <a
-                  href={profile.participant.hostelLocation}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                >
-                  <span className="text-lg font-semibold">View on Google Maps</span>
-                  <ExternalLink className="h-5 w-5" />
-                </a>
-              ) : (
-                <p className="text-muted-foreground">Location not provided</p>
-              )}
+              <a
+                href={profile.participant.hostelLocation}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+              >
+                <span className="text-lg font-semibold">View on Google Maps</span>
+                <ExternalLink className="h-5 w-5" />
+              </a>
             </CardContent>
           </Card>
-        </div>
+        )}
 
-        {/* Amritapuri Campus Map */}
+        {/* Dynamic Campus Map based on Site */}
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
                 <Map className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
-              Amritapuri Campus Location
+              {siteMap.title}
             </CardTitle>
             <CardDescription>
-              Interactive map showing hostel locations and campus facilities
+              {profile?.participant?.siteName 
+                ? `Interactive map showing hostel locations and campus facilities at ${profile.participant.siteName}` 
+                : "Interactive map showing hostel locations and campus facilities"}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="flex-1">
-              <div className="sticky top-[10vw] w-full px-[2vw] max-md:mt-[6vw] max-md:mb-[2vw]">
+              <div className="w-full px-[2vw] max-md:mt-[2vw] max-md:mb-[2vw]">
                 <iframe 
                   width="100%" 
                   height="" 
-                  className="h-[700px] max-md:h-[500px]"
-                  title="map"
-                  src="https://www.google.com/maps/d/embed?mid=1Tla0OCvXmOd0oR9VD_lIqDL2DnQ&ehbc=2E312F"
+                  className="h-[700px] max-md:h-[500px] rounded-lg"
+                  title={siteMap.title}
+                  src={siteMap.url}
+                  loading="lazy"
                 />
               </div>
             </div>
