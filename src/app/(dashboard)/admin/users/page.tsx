@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -44,8 +45,26 @@ import {
   MoreVertical,
   Edit,
   Eye,
-  UserX
+  Upload,
+  Loader2,
+  AlertCircle,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react'
+import BulkUserImport from '@/components/bulk-user-import'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface User {
   id: string
@@ -77,11 +96,20 @@ const UsersPage = () => {
   const { data: session } = useSession()
   const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null)
+  const [showBulkImport, setShowBulkImport] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string; role: string } | null>(null)
+  
+  // Search and Pagination
+  const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   useEffect(() => {
     if (!session || (session.user.role as string) !== "ADMIN") {
@@ -90,6 +118,35 @@ const UsersPage = () => {
     }
     fetchUsers()
   }, [session, router])
+
+  useEffect(() => {
+    filterUsers()
+  }, [users, searchQuery])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  const filterUsers = () => {
+    let filtered = [...users]
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(user => {
+        const name = getUserDisplayName(user).toLowerCase()
+        const email = user.email.toLowerCase()
+        const uid = user.uid?.toLowerCase() || ""
+        const college = user.participant?.college?.toLowerCase() || ""
+        
+        return name.includes(query) || 
+               email.includes(query) || 
+               uid.includes(query) || 
+               college.includes(query)
+      })
+    }
+
+    setFilteredUsers(filtered)
+  }
 
   const fetchUsers = async () => {
     setIsLoading(true)
@@ -111,6 +168,17 @@ const UsersPage = () => {
     }
   }
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentUsers = filteredUsers.slice(startIndex, endIndex)
+
+  const goToFirstPage = () => setCurrentPage(1)
+  const goToLastPage = () => setCurrentPage(totalPages)
+  const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages))
+  const goToPreviousPage = () => setCurrentPage(prev => Math.max(prev - 1, 1))
+
   const handleCreateUser = () => {
     setEditingUser(null)
     setShowForm(true)
@@ -125,33 +193,43 @@ const UsersPage = () => {
     router.push(`/admin/users/${userId}`)
   }
 
-  const handleDeleteUser = async (userId: string, userRole: string) => {
-    if (userRole === "ADMIN") {
-      alert("Cannot delete admin users")
+  const openDeleteDialog = (user: User) => {
+    setUserToDelete({
+      id: user.id,
+      name: getUserDisplayName(user),
+      role: user.role
+    })
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return
+
+    if (userToDelete.role === "ADMIN") {
+      setError("Cannot delete admin users")
+      setDeleteDialogOpen(false)
       return
     }
 
-    if (!confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
-      return
-    }
-
-    setDeleteLoading(userId)
+    setDeleteLoading(userToDelete.id)
     
     try {
-      const response = await fetch(`/api/users?userId=${userId}`, {
+      const response = await fetch(`/api/users?userId=${userToDelete.id}`, {
         method: "DELETE",
       })
       
       if (response.ok) {
-        setUsers(users.filter(user => user.id !== userId))
+        setUsers(users.filter(user => user.id !== userToDelete.id))
+        setDeleteDialogOpen(false)
       } else {
         const errorData = await response.json()
-        alert(errorData.error || "Failed to delete user")
+        setError(errorData.error || "Failed to delete user")
       }
     } catch (error) {
-      alert("An error occurred while deleting the user")
+      setError("An error occurred while deleting the user")
     } finally {
       setDeleteLoading(null)
+      setUserToDelete(null)
     }
   }
 
@@ -223,11 +301,11 @@ const UsersPage = () => {
     return (
       <div className="min-h-screen bg-background">
         <DashboardHeader />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
           <div className="space-y-4">
-            <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-96 w-full" />
+            <Skeleton className="h-24 sm:h-32 w-full" />
+            <Skeleton className="h-48 sm:h-64 w-full" />
+            <Skeleton className="h-64 sm:h-96 w-full" />
           </div>
         </div>
       </div>
@@ -238,17 +316,23 @@ const UsersPage = () => {
     <div className="min-h-screen bg-background">
       <DashboardHeader />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-4 sm:space-y-6">
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-            <p className="text-muted-foreground mt-1">Manage system users and their roles</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Manage system users and their roles</p>
           </div>
-          <Button onClick={handleCreateUser}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Create User
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button onClick={handleCreateUser} className="w-full sm:w-auto">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Create User
+            </Button>
+            <Button onClick={() => setShowBulkImport(true)} variant="outline" className="w-full sm:w-auto">
+              <Upload className="h-4 w-4 mr-2" />
+              Bulk Import
+            </Button>
+          </div>
         </div>
 
         {/* Create/Edit User Form Dialog */}
@@ -271,6 +355,77 @@ const UsersPage = () => {
           </DialogContent>
         </Dialog>
 
+        {/* Bulk Import Dialog */}
+        <Dialog open={showBulkImport} onOpenChange={setShowBulkImport}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Bulk Import Users
+              </DialogTitle>
+              <DialogDescription>
+                Import multiple users at once using a CSV file
+              </DialogDescription>
+            </DialogHeader>
+            <BulkUserImport 
+              onSuccess={() => {
+                setShowBulkImport(false)
+                fetchUsers()
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent className="max-w-md mx-4">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertCircle className="h-5 w-5" />
+                Delete User
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <p>Are you sure you want to delete this user?</p>
+                {userToDelete && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3 space-y-1">
+                    <p className="font-medium text-red-900 dark:text-red-100">
+                      {userToDelete.name}
+                    </p>
+                    <p className="text-sm text-red-700 dark:text-red-300">
+                      Role: {userToDelete.role}
+                    </p>
+                  </div>
+                )}
+                <p className="font-medium text-red-600 text-sm">
+                  ⚠️ This action cannot be undone. All user data will be permanently deleted.
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel disabled={deleteLoading !== null} className="w-full sm:w-auto">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteUser}
+                disabled={deleteLoading !== null}
+                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              >
+                {deleteLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete User
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Error Message */}
         {error && (
           <Alert variant="destructive">
@@ -278,8 +433,8 @@ const UsersPage = () => {
           </Alert>
         )}
 
-        {/* Users Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Users Statistics - Responsive Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -304,7 +459,7 @@ const UsersPage = () => {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="sm:col-span-2 lg:col-span-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Administrators</CardTitle>
               <Users className="h-4 w-4 text-red-600" />
@@ -321,42 +476,55 @@ const UsersPage = () => {
         {/* Users Table */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>All Users ({users.length})</CardTitle>
-                <CardDescription>View and manage all system users</CardDescription>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+              <div className="flex-1">
+                <CardTitle className="text-lg sm:text-xl">All Users ({filteredUsers.length})</CardTitle>
+                <CardDescription className="text-sm">View and manage all system users</CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={fetchUsers}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-initial sm:w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search users..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 text-sm"
+                  />
+                </div>
+                <Button variant="outline" size="sm" onClick={fetchUsers} className="w-full sm:w-auto">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
             </div>
           </CardHeader>
-          <CardContent>
-            {users.length === 0 ? (
-              <div className="text-center py-12">
+          <CardContent className="p-0 sm:p-6">
+            {filteredUsers.length === 0 ? (
+              <div className="text-center py-12 px-4">
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No users found.</p>
+                <p className="text-muted-foreground">
+                  {searchQuery ? "No users found matching your search." : "No users found."}
+                </p>
+                {searchQuery && (
+                  <Button 
+                    variant="link" 
+                    onClick={() => setSearchQuery("")}
+                    className="mt-2"
+                  >
+                    Clear search
+                  </Button>
+                )}
               </div>
             ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
+              <>
+                {/* Mobile Card View */}
+                <div className="block lg:hidden space-y-4 p-4">
+                  {currentUsers.map((user) => (
+                    <Card key={user.id} className="overflow-hidden">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <Avatar className="h-10 w-10 shrink-0">
                               {getUserAvatar(user) ? (
                                 <AvatarImage src={getUserAvatar(user)!} alt={getUserDisplayName(user)} />
                               ) : (
@@ -365,45 +533,14 @@ const UsersPage = () => {
                                 </AvatarFallback>
                               )}
                             </Avatar>
-                            <div>
-                              <div className="font-medium">{getUserDisplayName(user)}</div>
-                              <div className="text-sm text-muted-foreground">
-                                ID: {user.id.slice(0, 8)}...
-                              </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">{getUserDisplayName(user)}</div>
+                              <div className="text-sm text-muted-foreground truncate">{user.email}</div>
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getRoleVariant(user.role)}>
-                            {user.role}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Mail className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <div className="text-sm">{user.email}</div>
-                              {user.uid && (
-                                <div className="text-xs text-muted-foreground">UID: {user.uid}</div>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm max-w-xs truncate">
-                            {getUserDetails(user)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4" />
-                            {formatDate(user.createdAt)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
+                              <Button variant="ghost" size="sm" className="shrink-0">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -422,23 +559,196 @@ const UsersPage = () => {
                                 <>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
-                                    onClick={() => handleDeleteUser(user.id, user.role)}
-                                    disabled={deleteLoading === user.id}
-                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => openDeleteDialog(user)}
+                                    className="text-red-600 focus:text-red-600"
                                   >
                                     <Trash2 className="h-4 w-4 mr-2" />
-                                    {deleteLoading === user.id ? "Deleting..." : "Delete User"}
+                                    Delete User
                                   </DropdownMenuItem>
                                 </>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant={getRoleVariant(user.role)} className="text-xs">
+                            {user.role}
+                          </Badge>
+                          {user.uid && (
+                            <Badge variant="outline" className="text-xs">
+                              UID: {user.uid}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-muted-foreground truncate">
+                          {getUserDetails(user)}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(user.createdAt)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden lg:block rounded-md border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="min-w-[200px]">User</TableHead>
+                          <TableHead className="min-w-[100px]">Role</TableHead>
+                          <TableHead className="min-w-[200px]">Contact</TableHead>
+                          <TableHead className="min-w-[200px]">Details</TableHead>
+                          <TableHead className="min-w-[120px]">Created</TableHead>
+                          <TableHead className="text-right min-w-[80px]">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {currentUsers.map((user) => (
+                          <TableRow key={user.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-10 w-10">
+                                  {getUserAvatar(user) ? (
+                                    <AvatarImage src={getUserAvatar(user)!} alt={getUserDisplayName(user)} />
+                                  ) : (
+                                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                                      {getUserInitials(user)}
+                                    </AvatarFallback>
+                                  )}
+                                </Avatar>
+                                <div>
+                                  <div className="font-medium">{getUserDisplayName(user)}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    ID: {user.id.slice(0, 8)}...
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getRoleVariant(user.role)}>
+                                {user.role}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <div className="min-w-0">
+                                  <div className="text-sm truncate">{user.email}</div>
+                                  {user.uid && (
+                                    <div className="text-xs text-muted-foreground">UID: {user.uid}</div>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm max-w-xs truncate">
+                                {getUserDetails(user)}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                                <Calendar className="h-4 w-4" />
+                                {formatDate(user.createdAt)}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleViewUser(user.id)}>
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    View Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit User
+                                  </DropdownMenuItem>
+                                  {user.role !== "ADMIN" && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => openDeleteDialog(user)}
+                                        className="text-red-600 focus:text-red-600"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete User
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                {/* Pagination - Responsive */}
+                {totalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-4 border-t">
+                    <div className="text-sm text-muted-foreground text-center sm:text-left">
+                      Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                      <span className="font-medium">{Math.min(endIndex, filteredUsers.length)}</span> of{' '}
+                      <span className="font-medium">{filteredUsers.length}</span> users
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToFirstPage}
+                        disabled={currentPage === 1}
+                        className="hidden sm:flex"
+                      >
+                        <ChevronsLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToPreviousPage}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        <span className="ml-1">Previous</span>
+                      </Button>
+                      <div className="flex items-center gap-1 px-2">
+                        <span className="text-sm font-medium">{currentPage}</span>
+                        <span className="text-sm text-muted-foreground">/</span>
+                        <span className="text-sm text-muted-foreground">{totalPages}</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                      >
+                        <span className="mr-1">Next</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={goToLastPage}
+                        disabled={currentPage === totalPages}
+                        className="hidden sm:flex"
+                      >
+                        <ChevronsRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

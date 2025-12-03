@@ -22,7 +22,8 @@ import {
   CheckCircle,
   Eye,
   EyeOff,
-  Map
+  Map,
+  DoorOpen
 } from "lucide-react"
 
 interface ParticipantProfile {
@@ -36,8 +37,9 @@ interface ParticipantProfile {
     name: string
     college: string
     hostelName: string
-    wifiusername: string,
-    wifiPassword: string ,
+    roomNumber: string
+    wifiusername: string
+    wifiPassword: string
     hostelLocation?: string
     contactNumber: string
     createdAt: string
@@ -139,7 +141,7 @@ export default function ParticipantDashboard() {
 
         {/* Hostel Information Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Hostel Name */}
+          {/* Hostel Name & Room */}
           <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -155,6 +157,30 @@ export default function ParticipantDashboard() {
                 <p className="text-lg font-semibold">
                   {profile?.participant?.hostelName || "Not assigned"}
                 </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                  <DoorOpen className="h-4 w-4" />
+                  Room Number
+                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-lg font-semibold">
+                    {profile?.participant?.roomNumber || "Not assigned"}
+                  </p>
+                  {profile?.participant?.roomNumber && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(profile?.participant?.roomNumber || "", "roomNumber")}
+                    >
+                      {copiedField === "roomNumber" ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-1">UID</p>
@@ -191,26 +217,30 @@ export default function ParticipantDashboard() {
                 <p className="text-sm text-muted-foreground mb-1">WiFi Username</p>
                 <div className="flex items-center gap-2">
                   <p className="text-lg font-mono font-semibold">
-                    {profile?.participant?.wifiusername || "Unknown Username"}
+                    {profile?.participant?.wifiusername || "Not provided"}
                   </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(profile?.participant?.wifiusername || "", "username")}
-                  >
-                    {copiedField === "username" ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
+                  {profile?.participant?.wifiusername && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(profile?.participant?.wifiusername || "", "username")}
+                    >
+                      {copiedField === "username" ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-1">WiFi Password</p>
                 <div className="flex items-center gap-2">
                   <p className="text-lg font-mono font-semibold">
-                    {showWifiPassword ? profile?.participant?.wifiPassword : "••••••••"}
+                    {showWifiPassword 
+                      ? (profile?.participant?.wifiPassword || "Not provided")
+                      : "••••••••"}
                   </p>
                   <Button
                     variant="ghost"
@@ -223,17 +253,19 @@ export default function ParticipantDashboard() {
                       <Eye className="h-4 w-4" />
                     )}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(profile?.participant?.wifiPassword || "", "password")}
-                  >
-                    {copiedField === "password" ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
+                  {profile?.participant?.wifiPassword && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyToClipboard(profile?.participant?.wifiPassword || "", "password")}
+                    >
+                      {copiedField === "password" ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -321,18 +353,16 @@ export default function ParticipantDashboard() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="flex-1">
-                        <div className="sticky top-[10vw] w-full px-[2vw] max-md:mt-[6vw] max-md:mb-[2vw]">
-                            <iframe 
-                                width="100%" 
-                                height="" 
-                                className="h-[700px] max-md:h-[500px]"
-                                title="map"
-                                src="https://www.google.com/maps/d/embed?mid=1Tla0OCvXmOd0oR9VD_lIqDL2DnQ&ehbc=2E312F"
-                                //src="https://maps.google.com/maps?width=100%&amp;height=600&amp;hl=en&amp;q=9.09389,76.49181&amp;ie=UTF8&amp;t=&amp;z=14&amp;iwloc=B&amp;output=embed"
-                                />
-                        </div>
-                        {/* <div className="bg-blue-600 sticky top-[10vw] w-full">HELlo</div> */}
-                    </div>
+              <div className="sticky top-[10vw] w-full px-[2vw] max-md:mt-[6vw] max-md:mb-[2vw]">
+                <iframe 
+                  width="100%" 
+                  height="" 
+                  className="h-[700px] max-md:h-[500px]"
+                  title="map"
+                  src="https://www.google.com/maps/d/embed?mid=1Tla0OCvXmOd0oR9VD_lIqDL2DnQ&ehbc=2E312F"
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </main>

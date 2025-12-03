@@ -3,10 +3,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import bcrypt from "bcryptjs"
-import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { createUserSchema } from "@/lib/validations/auth"
+import bcrypt from "bcryptjs"
 
 // GET - Fetch all users
 export async function GET(request: NextRequest) {
@@ -22,7 +20,6 @@ export async function GET(request: NextRequest) {
 
     const users = await prisma.user.findMany({
       include: {
-      
         participant: true,
         admin: true,
       },
@@ -54,25 +51,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { 
-      email, 
-      password, 
-      uid, 
-      role, 
+    const {
+      email,
+      password,
+      uid,
+      role,
       name,
       gender,
       college,
       hostelName,
+      roomNumber,
       wifiusername,
       wifiPassword,
       hostelLocation,
-      contactNumber
+      contactNumber,
     } = body
 
-    // Validation
-    if (!email || !password || !role || !name) {
+    // Validate required fields
+    if (!email || !password || !name) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Email, password, and name are required" },
         { status: 400 }
       )
     }
@@ -96,18 +94,26 @@ export async function POST(request: NextRequest) {
     let newUser
 
     if (role === "PARTICIPANT") {
+      if (!college) {
+        return NextResponse.json(
+          { error: "College is required for participants" },
+          { status: 400 }
+        )
+      }
+
       newUser = await prisma.user.create({
         data: {
           email,
           password: hashedPassword,
-          uid,
-          role,
+          uid: uid || `${email.split('@')[0]}_${Date.now()}`,
+          role: "PARTICIPANT",
           participant: {
             create: {
               name,
+              college,
               gender: gender || "male",
-              college: college || "",
               hostelName: hostelName || "",
+              roomNumber: roomNumber || "",
               wifiusername: wifiusername || "",
               wifiPassword: wifiPassword || "",
               hostelLocation: hostelLocation || "",
@@ -124,8 +130,8 @@ export async function POST(request: NextRequest) {
         data: {
           email,
           password: hashedPassword,
-          uid,
-          role,
+          uid: uid || `admin_${email.split('@')[0]}_${Date.now()}`,
+          role: "ADMIN",
           admin: {
             create: {
               name,
@@ -177,16 +183,19 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
+    console.log("Update request body:", body)
+
     const {
       name,
       gender,
       college,
       hostelName,
+      roomNumber,
       wifiusername,
       wifiPassword,
       hostelLocation,
       contactNumber,
-      role
+      newPassword
     } = body
 
     // Fetch the user to check their role
@@ -205,23 +214,50 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    console.log("Updating user:", userId)
+    console.log("New password provided:", !!newPassword)
+
+    // Prepare base update data
+    const userUpdateData: any = {}
+
+    // Handle password update if provided
+    if (newPassword && newPassword.trim() !== "") {
+      if (newPassword.length < 6) {
+        return NextResponse.json(
+          { error: "Password must be at least 6 characters" },
+          { status: 400 }
+        )
+      }
+      const hashedPassword = await bcrypt.hash(newPassword, 10)
+      userUpdateData.password = hashedPassword
+      console.log("Password will be updated")
+    }
+
     let updatedUser
 
     if (user.role === "PARTICIPANT") {
+      // Build participant update data
+      const participantUpdateData: any = {}
+      
+      if (name !== undefined) participantUpdateData.name = name
+      if (gender !== undefined) participantUpdateData.gender = gender
+      if (college !== undefined) participantUpdateData.college = college
+      if (hostelName !== undefined) participantUpdateData.hostelName = hostelName
+      if (roomNumber !== undefined) participantUpdateData.roomNumber = roomNumber
+      if (wifiusername !== undefined) participantUpdateData.wifiusername = wifiusername
+      if (wifiPassword !== undefined) participantUpdateData.wifiPassword = wifiPassword
+      if (hostelLocation !== undefined) participantUpdateData.hostelLocation = hostelLocation
+      if (contactNumber !== undefined) participantUpdateData.contactNumber = contactNumber
+
+      console.log("Participant update data:", participantUpdateData)
+
+      // Update participant user
       updatedUser = await prisma.user.update({
         where: { id: userId },
         data: {
+          ...userUpdateData,
           participant: {
-            update: {
-              name: name || user.participant?.name,
-              gender: gender || user.participant?.gender,
-              college: college !== undefined ? college : user.participant?.college,
-              hostelName: hostelName !== undefined ? hostelName : user.participant?.hostelName,
-              wifiusername: wifiusername !== undefined ? wifiusername : user.participant?.wifiusername,
-              wifiPassword: wifiPassword !== undefined ? wifiPassword : user.participant?.wifiPassword,
-              hostelLocation: hostelLocation !== undefined ? hostelLocation : user.participant?.hostelLocation,
-              contactNumber: contactNumber !== undefined ? contactNumber : user.participant?.contactNumber,
-            },
+            update: participantUpdateData,
           },
         },
         include: {
@@ -229,14 +265,21 @@ export async function PATCH(request: NextRequest) {
         },
       })
     } else if (user.role === "ADMIN") {
+      // Build admin update data
+      const adminUpdateData: any = {}
+      
+      if (name !== undefined) adminUpdateData.name = name
+      if (gender !== undefined) adminUpdateData.gender = gender
+
+      console.log("Admin update data:", adminUpdateData)
+
+      // Update admin user
       updatedUser = await prisma.user.update({
         where: { id: userId },
         data: {
+          ...userUpdateData,
           admin: {
-            update: {
-              name: name || user.admin?.name,
-              gender: gender || user.admin?.gender,
-            },
+            update: adminUpdateData,
           },
         },
         include: {
@@ -250,6 +293,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    console.log("User updated successfully")
     return NextResponse.json(updatedUser)
   } catch (error) {
     console.error("Error updating user:", error)
@@ -282,7 +326,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Check if user exists and get their role
+    // Check if user exists and their role
     const user = await prisma.user.findUnique({
       where: { id: userId },
     })
@@ -294,7 +338,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Prevent deleting admin users
+    // Prevent deletion of admin users
     if (user.role === "ADMIN") {
       return NextResponse.json(
         { error: "Cannot delete admin users" },
@@ -302,7 +346,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Delete the user (cascade will handle related records)
+    // Delete user (cascade will delete related records)
     await prisma.user.delete({
       where: { id: userId },
     })
