@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"  // Add this import
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Loader2, Save, AlertCircle, Eye, EyeOff, MapPin, CheckCircle2, XCircle, Info } from "lucide-react"
+import { Loader2, Save, AlertCircle, Eye, EyeOff, MapPin, CheckCircle2, XCircle, Info, Shield } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 
 interface UserFormProps {
@@ -29,6 +30,9 @@ interface UserFormProps {
 }
 
 export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
+  const { data: session } = useSession()  // Add this
+  const isSuperAdmin = session?.user?.isSuperAdmin || false  // Add this
+  
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -106,6 +110,12 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Check if regular admin is trying to create/edit admin user
+    if (!isSuperAdmin && formData.role === "ADMIN") {
+      setError("Only Super Admins can create or manage Admin users")
+      return
+    }
     
     // If editing a participant with a site set, ALWAYS require verification
     if (editingUser && editingUser.role === "PARTICIPANT" && lockedSiteName) {
@@ -241,6 +251,13 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
           </Alert>
         )}
 
+        {/* Super Admin Badge - Show at top */}
+        {isSuperAdmin && !editingUser && (
+            <AlertDescription className="text-sm text-purple-800 dark:text-purple-200">
+              You have Super Admin privileges. You can create both Participant and Admin users.
+            </AlertDescription>
+        )}
+
         {/* Basic Information */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Basic Information</h3>
@@ -312,19 +329,40 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role">Role *</Label>
+                <Label htmlFor="role" className="flex items-center gap-2">
+                  Role *
+                  {!isSuperAdmin && (
+                    <span className="text-xs text-muted-foreground font-normal">
+                      (Admin creation requires Super Admin)
+                    </span>
+                  )}
+                </Label>
                 <Select
                   value={formData.role}
                   onValueChange={(value) => handleSelectChange("role", value)}
+                  disabled={!isSuperAdmin && formData.role === "ADMIN"}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="PARTICIPANT">Participant</SelectItem>
-                    <SelectItem value="ADMIN">Admin</SelectItem>
+                    <SelectItem value="ADMIN" disabled={!isSuperAdmin}>
+                      <div className="flex items-center justify-between w-full">
+                        <span>Admin</span>
+                        {/* {!isSuperAdmin && (
+                          <Shield className="h-3 w-3 ml-2 text-muted-foreground" />
+                        )} */}
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
+                {!isSuperAdmin && (
+                  <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                    <Info className="h-3 w-3" />
+                    Only Super Admins can create Admin users
+                  </p>
+                )}
               </div>
             </>
           )}
@@ -560,12 +598,6 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     <span className="font-medium">Name:</span> {editingUser?.participant?.name}
                   </p>
-                  {/* <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <span className="font-medium">Registered Site:</span>{" "}
-                    <span className="font-semibold text-blue-900 dark:text-blue-100">
-                      {lockedSiteName || "Not Set"}
-                    </span>
-                  </p> */}
                 </div>
               </AlertDescription>
             </Alert>

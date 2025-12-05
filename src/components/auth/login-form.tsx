@@ -115,7 +115,7 @@ export function LoginForm() {
   const getRoleDescription = (role: Role) => {
     const descriptions = {
       STUDENT: "Access your stayback requests and club activities",
-      PARTICIPANT: "Manage your hostel stay and activities", 
+      PARTICIPANT: "Get to know your details in ICPC Amrita Regionals", 
       ADMIN: "Full system administration access",
     }
     return descriptions[role]
