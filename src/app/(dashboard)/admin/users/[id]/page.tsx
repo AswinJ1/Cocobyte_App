@@ -92,6 +92,8 @@ export default function UserDetailPage() {
   const params = useParams()
   const userId = params.id as string
 
+  const isSuperAdmin = session?.user?.isSuperAdmin || false
+
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -131,6 +133,12 @@ export default function UserDetailPage() {
 
   const handleDelete = async () => {
     if (!user) return
+
+    if (!isSuperAdmin) {
+      alert("Only Super Admins can delete users")
+      setShowDeleteDialog(false)
+      return
+    }
 
     setIsDeleting(true)
     try {
@@ -352,7 +360,7 @@ export default function UserDetailPage() {
                   <Edit className="h-4 w-4" />
                   Edit
                 </Button>
-                {user.role !== "ADMIN" && (
+                {user.role !== "ADMIN" && isSuperAdmin && (
                   <Button
                     onClick={() => setShowDeleteDialog(true)}
                     variant="destructive"
@@ -360,6 +368,16 @@ export default function UserDetailPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete
+                  </Button>
+                )}
+                {user.role !== "ADMIN" && !isSuperAdmin && (
+                  <Button
+                    disabled
+                    variant="outline"
+                    className="gap-2 opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete (Super Admin Only)
                   </Button>
                 )}
               </div>

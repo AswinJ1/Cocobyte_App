@@ -24,7 +24,9 @@ import {
   Mail,
   Bell,
   Settings,
-  List
+  List,
+  Cloud,
+  Server
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -77,7 +79,7 @@ const navigation: NavigationItem[] = [
   {
     name: "System Logs",
     href: "/admin/logs",
-    icon: <FileText className="w-5 h-5" />,
+    icon: <Server className="w-5 h-5" />,
     roles: ["ADMIN"]
   },
   {

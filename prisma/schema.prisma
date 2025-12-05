@@ -30,6 +30,7 @@ model Admin {
   userId    String   @unique
   name      String
   createdAt DateTime @default(now())
+  isSuperAdmin Boolean @default(false)  
   updatedAt DateTime @updatedAt
   avatarUrl String?
   gender    String   @default("male")

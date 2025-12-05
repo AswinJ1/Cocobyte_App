@@ -103,7 +103,7 @@ export const authOptions: NextAuthOptions = {
             user = await prisma.user.findUnique({
               where: { email },
               include: {
-                admin: true,
+                admin: true,  // Include admin to get isSuperAdmin
                 participant: true,
               },
             })
@@ -113,7 +113,8 @@ export const authOptions: NextAuthOptions = {
             user = await prisma.user.findUnique({
               where: { uid },
               include: {
-                participant: role === "PARTICIPANT" ? true : undefined,
+                admin: true,
+                participant: true,
               },
             })
           }
@@ -188,6 +189,7 @@ export const authOptions: NextAuthOptions = {
             email: user.email,
             uid: user.uid || undefined,
             role: user.role,
+            isSuperAdmin: user.admin?.isSuperAdmin || false  // Add this line
           }
         } catch (error) {
           console.error("Auth error:", error)
@@ -202,6 +204,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id
         token.role = user.role
         token.uid = user.uid
+        token.isSuperAdmin = user.isSuperAdmin || false  // Add this line
       }
       return token
     },
@@ -210,6 +213,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string
         session.user.role = token.role as Role
         session.user.uid = token.uid as string | undefined
+        session.user.isSuperAdmin = token.isSuperAdmin as boolean  // Add this line
       }
       return session
     },

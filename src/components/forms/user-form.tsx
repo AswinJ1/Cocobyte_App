@@ -560,12 +560,12 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
                   <p className="text-sm text-blue-800 dark:text-blue-200">
                     <span className="font-medium">Name:</span> {editingUser?.participant?.name}
                   </p>
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                  {/* <p className="text-sm text-blue-800 dark:text-blue-200">
                     <span className="font-medium">Registered Site:</span>{" "}
                     <span className="font-semibold text-blue-900 dark:text-blue-100">
                       {lockedSiteName || "Not Set"}
                     </span>
-                  </p>
+                  </p> */}
                 </div>
               </AlertDescription>
             </Alert>

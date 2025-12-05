@@ -107,6 +107,7 @@ interface User {
 const UsersPage = () => {
   const { data: session } = useSession()
   const router = useRouter()
+  const isSuperAdmin = session?.user?.isSuperAdmin || false
   const [users, setUsers] = useState<User[]>([])
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -249,6 +250,13 @@ const UsersPage = () => {
   }
 
   const openDeleteDialog = (user: User) => {
+    // Only Super Admin can delete users
+    if (!isSuperAdmin) {
+      setError("Only Super Admins can delete users")
+      setTimeout(() => setError(null), 3000)
+      return
+    }
+
     setUserToDelete({
       id: user.id,
       name: getUserDisplayName(user),
@@ -260,9 +268,18 @@ const UsersPage = () => {
   const handleDeleteUser = async () => {
     if (!userToDelete) return
 
+    // Double check Super Admin status
+    if (!isSuperAdmin) {
+      setError("Only Super Admins can delete users")
+      setDeleteDialogOpen(false)
+      setTimeout(() => setError(null), 3000)
+      return
+    }
+
     if (userToDelete.role === "ADMIN") {
       setError("Cannot delete admin users")
       setDeleteDialogOpen(false)
+      setTimeout(() => setError(null), 3000)
       return
     }
 
@@ -279,9 +296,11 @@ const UsersPage = () => {
       } else {
         const errorData = await response.json()
         setError(errorData.error || "Failed to delete user")
+        setTimeout(() => setError(null), 3000)
       }
     } catch (error) {
       setError("An error occurred while deleting the user")
+      setTimeout(() => setError(null), 3000)
     } finally {
       setDeleteLoading(null)
       setUserToDelete(null)
@@ -376,11 +395,25 @@ const UsersPage = () => {
       <DashboardHeader />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-4 sm:space-y-6">
-        {/* Header - Responsive */}
+        {/* Header - Show Super Admin Badge */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">Manage system users and their roles</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
+              {isSuperAdmin && (
+                <Badge variant="destructive" className="text-xs">
+                  Super Admin
+                </Badge>
+              )}
+            </div>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
+              Manage system users and their roles
+              {!isSuperAdmin && (
+                <span className="block sm:inline text-orange-600 dark:text-orange-400 sm:ml-2 mt-1 sm:mt-0">
+                  • Delete operations require Super Admin access
+                </span>
+              )}
+            </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Button onClick={handleCreateUser} className="w-full sm:w-auto">
@@ -488,6 +521,7 @@ const UsersPage = () => {
         {/* Error Message */}
         {error && (
           <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -640,6 +674,7 @@ const UsersPage = () => {
           </CardHeader>
           <CardContent className="p-0 sm:p-6">
             {filteredUsers.length === 0 ? (
+              // ...existing empty state...
               <div className="text-center py-12 px-4">
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-2">
@@ -698,18 +733,29 @@ const UsersPage = () => {
                               {user.role !== "ADMIN" && (
                                 <>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => openDeleteDialog(user)}
-                                    className="text-red-600 focus:text-red-600"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete User
-                                  </DropdownMenuItem>
+                                  {isSuperAdmin ? (
+                                    <DropdownMenuItem
+                                      onClick={() => openDeleteDialog(user)}
+                                      className="text-red-600 focus:text-red-600"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete User
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem
+                                      disabled
+                                      className="text-muted-foreground opacity-50"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete (Super Admin Only)
+                                    </DropdownMenuItem>
+                                  )}
                                 </>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
+                        {/* ...existing badges and date... */}
                         <div className="flex flex-wrap gap-2">
                           <Badge variant={getRoleVariant(user.role)} className="text-xs">
                             {user.role}
@@ -761,6 +807,7 @@ const UsersPage = () => {
                       <TableBody>
                         {currentUsers.map((user) => (
                           <TableRow key={user.id}>
+                            {/* ...existing table cells... */}
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10">
@@ -844,13 +891,23 @@ const UsersPage = () => {
                                   {user.role !== "ADMIN" && (
                                     <>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        onClick={() => openDeleteDialog(user)}
-                                        className="text-red-600 focus:text-red-600"
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete User
-                                      </DropdownMenuItem>
+                                      {isSuperAdmin ? (
+                                        <DropdownMenuItem
+                                          onClick={() => openDeleteDialog(user)}
+                                          className="text-red-600 focus:text-red-600"
+                                        >
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Delete User
+                                        </DropdownMenuItem>
+                                      ) : (
+                                        <DropdownMenuItem
+                                          disabled
+                                          className="text-muted-foreground opacity-50"
+                                        >
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Delete (Super Admin Only)
+                                        </DropdownMenuItem>
+                                      )}
                                     </>
                                   )}
                                 </DropdownMenuContent>
