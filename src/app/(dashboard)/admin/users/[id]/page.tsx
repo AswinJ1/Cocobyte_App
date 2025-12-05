@@ -83,6 +83,7 @@ interface User {
     gender?: string
     avatarUrl?: string
     createdAt: string
+    isSuperAdmin?: boolean
   }
 }
 
@@ -93,6 +94,7 @@ export default function UserDetailPage() {
   const userId = params.id as string
 
   const isSuperAdmin = session?.user?.isSuperAdmin || false
+  const isOwnAccount = session?.user?.id === userId  // Add this line
 
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -131,11 +133,39 @@ export default function UserDetailPage() {
     }
   }
 
+  // Helper function to check if user can be edited
+  const canEditUser = () => {
+    if (!user) return false
+    if (isSuperAdmin) return true // Super admin can edit anyone
+    if (isOwnAccount) return true // Admin can always edit their own account
+    if (user.role === "ADMIN") return false // Regular admin cannot edit other admin users
+    return true // Regular admin can edit participants
+  }
+
+  // Helper function to check if user can be deleted
+  const canDeleteUser = () => {
+    if (!user) return false
+    if (!isSuperAdmin) return false // Only super admins can delete
+    if (isOwnAccount) return false // Cannot delete own account
+    if (user.role === "ADMIN" && user.admin?.isSuperAdmin) return false // Cannot delete super admins
+    return true // Can delete participants and regular admins
+  }
+
+  // Helper function to get action button tooltip
+  const getActionTooltip = () => {
+    if (!user) return ""
+    if (isOwnAccount) return "Cannot delete your own account"
+    if (!isSuperAdmin) return "Only Super Admins can delete users"
+    if (user.role === "ADMIN" && user.admin?.isSuperAdmin) return "Cannot delete Super Admin"
+    return "Delete User"
+  }
+
   const handleDelete = async () => {
     if (!user) return
 
-    if (!isSuperAdmin) {
-      alert("Only Super Admins can delete users")
+    // Check permissions
+    if (!canDeleteUser()) {
+      alert(getActionTooltip())
       setShowDeleteDialog(false)
       return
     }
@@ -326,6 +356,18 @@ export default function UserDetailPage() {
                     <Shield className="h-3 w-3 mr-1" />
                     {user.role}
                   </Badge>
+                  {user.role === "ADMIN" && user.admin?.isSuperAdmin && (
+                    <Badge variant="destructive" className="text-xs">
+                      <Shield className="h-3 w-3 mr-1" />
+                      Super Admin
+                    </Badge>
+                  )}
+                  {isOwnAccount && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+                      <UserCircle className="h-3 w-3 mr-1" />
+                      Your Account
+                    </Badge>
+                  )}
                   <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Active
@@ -353,14 +395,26 @@ export default function UserDetailPage() {
 
               {/* Action Buttons */}
               <div className="flex gap-2">
-                <Button
-                  onClick={() => setShowEditDialog(true)}
-                  className="gap-2"
-                >
-                  <Edit className="h-4 w-4" />
-                  Edit
-                </Button>
-                {user.role !== "ADMIN" && isSuperAdmin && (
+                {canEditUser() ? (
+                  <Button
+                    onClick={() => setShowEditDialog(true)}
+                    className="gap-2"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Edit
+                  </Button>
+                ) : (
+                  <Button
+                    disabled
+                    variant="outline"
+                    className="gap-2 opacity-50"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Edit (Super Admin Only)
+                  </Button>
+                )}
+                
+                {canDeleteUser() ? (
                   <Button
                     onClick={() => setShowDeleteDialog(true)}
                     variant="destructive"
@@ -369,15 +423,15 @@ export default function UserDetailPage() {
                     <Trash2 className="h-4 w-4" />
                     Delete
                   </Button>
-                )}
-                {user.role !== "ADMIN" && !isSuperAdmin && (
+                ) : (
                   <Button
                     disabled
                     variant="outline"
                     className="gap-2 opacity-50"
+                    title={getActionTooltip()}
                   >
                     <Trash2 className="h-4 w-4" />
-                    Delete (Super Admin Only)
+                    {isOwnAccount ? "Cannot Delete Self" : getActionTooltip()}
                   </Button>
                 )}
               </div>
@@ -577,6 +631,16 @@ export default function UserDetailPage() {
                   label="Profile Created"
                   value={formatDate(user.admin.createdAt)}
                 />
+                {user.admin.isSuperAdmin && (
+                  <div className="pt-2">
+                    <Alert className="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
+                      <Shield className="h-4 w-4 text-red-600" />
+                      <AlertDescription className="text-sm text-red-800 dark:text-red-200">
+                        This user has Super Administrator privileges with full system access.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

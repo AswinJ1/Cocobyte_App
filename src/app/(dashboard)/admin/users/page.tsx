@@ -62,7 +62,8 @@ import {
   ChevronsRight,
   MapPin,
   UsersRound,
-  X
+  X,
+  Shield
 } from 'lucide-react'
 import BulkUserImport from '@/components/bulk-user-import'
 import {
@@ -101,6 +102,7 @@ interface User {
     name: string
     avatarUrl?: string
     gender?: string
+    isSuperAdmin?: boolean
   }
 }
 
@@ -108,6 +110,7 @@ const UsersPage = () => {
   const { data: session } = useSession()
   const router = useRouter()
   const isSuperAdmin = session?.user?.isSuperAdmin || false
+  
   const [users, setUsers] = useState<User[]>([])
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -235,12 +238,48 @@ const UsersPage = () => {
   const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages))
   const goToPreviousPage = () => setCurrentPage(prev => Math.max(prev - 1, 1))
 
+  // Helper function to check if user can be edited
+  const canEditUser = (user: User) => {
+    if (isSuperAdmin) return true // Super admin can edit anyone
+    if (session?.user?.id === user.id) return true // Admin can always edit their own account
+    if (user.role === "ADMIN") return false // Regular admin cannot edit other admin users
+    return true // Regular admin can edit participants
+  }
+
+  // Helper function to check if user can be deleted
+  const canDeleteUser = (user: User) => {
+    if (!isSuperAdmin) return false // Only super admins can delete
+    if (user.role === "ADMIN" && user.admin?.isSuperAdmin) return false // Cannot delete super admins
+    return true // Can delete participants and regular admins
+  }
+
+  // Helper function to get delete button tooltip
+  const getDeleteTooltip = (user: User) => {
+    if (!isSuperAdmin) return "Delete (Super Admin Only)"
+    if (user.role === "ADMIN" && user.admin?.isSuperAdmin) return "Cannot Delete Super Admin"
+    return "Delete User"
+  }
+
   const handleCreateUser = () => {
     setEditingUser(null)
     setShowForm(true)
   }
 
   const handleEditUser = (user: User) => {
+    // Check if it's own account first (admins can always edit themselves)
+    if (session?.user?.id === user.id) {
+      setEditingUser(user)
+      setShowForm(true)
+      return
+    }
+
+    // Then check other permissions
+    if (!isSuperAdmin && user.role === "ADMIN") {
+      setError("Only Super Admins can edit other Admin users")
+      setTimeout(() => setError(null), 3000)
+      return
+    }
+
     setEditingUser(user)
     setShowForm(true)
   }
@@ -253,6 +292,13 @@ const UsersPage = () => {
     // Only Super Admin can delete users
     if (!isSuperAdmin) {
       setError("Only Super Admins can delete users")
+      setTimeout(() => setError(null), 3000)
+      return
+    }
+
+    // Check if trying to delete another super admin
+    if (user.role === "ADMIN" && user.admin?.isSuperAdmin) {
+      setError("Cannot delete Super Admin users")
       setTimeout(() => setError(null), 3000)
       return
     }
@@ -271,13 +317,6 @@ const UsersPage = () => {
     // Double check Super Admin status
     if (!isSuperAdmin) {
       setError("Only Super Admins can delete users")
-      setDeleteDialogOpen(false)
-      setTimeout(() => setError(null), 3000)
-      return
-    }
-
-    if (userToDelete.role === "ADMIN") {
-      setError("Cannot delete admin users")
       setDeleteDialogOpen(false)
       setTimeout(() => setError(null), 3000)
       return
@@ -402,6 +441,7 @@ const UsersPage = () => {
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
               {isSuperAdmin && (
                 <Badge variant="destructive" className="text-xs">
+                  <Shield className="h-3 w-3 mr-1" />
                   Super Admin
                 </Badge>
               )}
@@ -410,7 +450,7 @@ const UsersPage = () => {
               Manage system users and their roles
               {!isSuperAdmin && (
                 <span className="block sm:inline text-orange-600 dark:text-orange-400 sm:ml-2 mt-1 sm:mt-0">
-                  • Delete operations require Super Admin access
+                  • Admin operations require Super Admin access
                 </span>
               )}
             </p>
@@ -674,7 +714,6 @@ const UsersPage = () => {
           </CardHeader>
           <CardContent className="p-0 sm:p-6">
             {filteredUsers.length === 0 ? (
-              // ...existing empty state...
               <div className="text-center py-12 px-4">
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-2">
@@ -726,40 +765,59 @@ const UsersPage = () => {
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit User
-                              </DropdownMenuItem>
-                              {user.role !== "ADMIN" && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  {isSuperAdmin ? (
-                                    <DropdownMenuItem
-                                      onClick={() => openDeleteDialog(user)}
-                                      className="text-red-600 focus:text-red-600"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Delete User
-                                    </DropdownMenuItem>
-                                  ) : (
-                                    <DropdownMenuItem
-                                      disabled
-                                      className="text-muted-foreground opacity-50"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Delete (Super Admin Only)
-                                    </DropdownMenuItem>
-                                  )}
-                                </>
+                              
+                              {canEditUser(user) ? (
+                                <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit User
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  disabled
+                                  className="text-muted-foreground opacity-50 cursor-not-allowed"
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  <span className="flex items-center gap-1">
+                                    Edit 
+                                    <span className="text-xs">(Super Admin Only)</span>
+                                  </span>
+                                </DropdownMenuItem>
+                              )}
+                              
+                              <DropdownMenuSeparator />
+                              
+                              {canDeleteUser(user) ? (
+                                <DropdownMenuItem
+                                  onClick={() => openDeleteDialog(user)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete User
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  disabled
+                                  className="text-muted-foreground opacity-50 cursor-not-allowed"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  <span className="text-xs">{getDeleteTooltip(user)}</span>
+                                </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                        {/* ...existing badges and date... */}
+                        
+                        {/* Badges */}
                         <div className="flex flex-wrap gap-2">
                           <Badge variant={getRoleVariant(user.role)} className="text-xs">
                             {user.role}
                           </Badge>
+                          {user.role === "ADMIN" && user.admin?.isSuperAdmin && (
+                            <Badge variant="destructive" className="text-xs">
+                              <Shield className="h-3 w-3 mr-1" />
+                              Super Admin
+                            </Badge>
+                          )}
                           {user.uid && (
                             <Badge variant="outline" className="text-xs">
                               UID: {user.uid}
@@ -778,6 +836,7 @@ const UsersPage = () => {
                             </Badge>
                           )}
                         </div>
+                        
                         <div className="text-sm text-muted-foreground truncate">
                           {getUserDetails(user)}
                         </div>
@@ -807,7 +866,6 @@ const UsersPage = () => {
                       <TableBody>
                         {currentUsers.map((user) => (
                           <TableRow key={user.id}>
-                            {/* ...existing table cells... */}
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10">
@@ -828,9 +886,17 @@ const UsersPage = () => {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={getRoleVariant(user.role)}>
-                                {user.role}
-                              </Badge>
+                              <div className="flex flex-col gap-1">
+                                <Badge variant={getRoleVariant(user.role)}>
+                                  {user.role}
+                                </Badge>
+                                {user.role === "ADMIN" && user.admin?.isSuperAdmin && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    <Shield className="h-3 w-3 mr-1" />
+                                    Super
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -884,31 +950,43 @@ const UsersPage = () => {
                                     <Eye className="h-4 w-4 mr-2" />
                                     View Details
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit User
-                                  </DropdownMenuItem>
-                                  {user.role !== "ADMIN" && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      {isSuperAdmin ? (
-                                        <DropdownMenuItem
-                                          onClick={() => openDeleteDialog(user)}
-                                          className="text-red-600 focus:text-red-600"
-                                        >
-                                          <Trash2 className="h-4 w-4 mr-2" />
-                                          Delete User
-                                        </DropdownMenuItem>
-                                      ) : (
-                                        <DropdownMenuItem
-                                          disabled
-                                          className="text-muted-foreground opacity-50"
-                                        >
-                                          <Trash2 className="h-4 w-4 mr-2" />
-                                          Delete (Super Admin Only)
-                                        </DropdownMenuItem>
-                                      )}
-                                    </>
+                                  
+                                  {canEditUser(user) ? (
+                                    <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      Edit User
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem
+                                      disabled
+                                      className="text-muted-foreground opacity-50 cursor-not-allowed"
+                                    >
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      <span className="flex items-center gap-1">
+                                        Edit 
+                                        <span className="text-xs">(Super Admin Only)</span>
+                                      </span>
+                                    </DropdownMenuItem>
+                                  )}
+                                  
+                                  <DropdownMenuSeparator />
+                                  
+                                  {canDeleteUser(user) ? (
+                                    <DropdownMenuItem
+                                      onClick={() => openDeleteDialog(user)}
+                                      className="text-red-600 focus:text-red-600"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete User
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem
+                                      disabled
+                                      className="text-muted-foreground opacity-50 cursor-not-allowed"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      <span className="text-xs">{getDeleteTooltip(user)}</span>
+                                    </DropdownMenuItem>
                                   )}
                                 </DropdownMenuContent>
                               </DropdownMenu>

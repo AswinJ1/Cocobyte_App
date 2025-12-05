@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"  // Add this import
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -30,8 +30,9 @@ interface UserFormProps {
 }
 
 export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
-  const { data: session } = useSession()  // Add this
-  const isSuperAdmin = session?.user?.isSuperAdmin || false  // Add this
+  const { data: session } = useSession()
+  const isSuperAdmin = session?.user?.isSuperAdmin || false
+  const isOwnAccount = editingUser && session?.user?.id === editingUser.id  // Add this check
   
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -111,9 +112,9 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Check if regular admin is trying to create/edit admin user
-    if (!isSuperAdmin && formData.role === "ADMIN") {
-      setError("Only Super Admins can create or manage Admin users")
+    // Check permissions - Allow if it's their own account OR if they're super admin
+    if (!isOwnAccount && !isSuperAdmin && formData.role === "ADMIN") {
+      setError("Only Super Admins can create or manage other Admin users")
       return
     }
     
@@ -241,6 +242,9 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
   // Site is disabled if locked
   const isSiteDisabled = !!lockedSiteName
 
+  // Show warning only if editing another admin user (not own account)
+  const showAdminWarning = editingUser && editingUser.role === "ADMIN" && !isSuperAdmin && !isOwnAccount
+
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -251,11 +255,28 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
           </Alert>
         )}
 
-        {/* Super Admin Badge - Show at top */}
+        {/* Show warning only when trying to edit ANOTHER admin's account */}
+        {showAdminWarning && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+              Only Super Admins can create or manage Admin users
+          </Alert>
+        )}
+
+        {/* Super Admin Badge - Show at top for new users */}
         {isSuperAdmin && !editingUser && (
-            <AlertDescription className="text-sm text-purple-800 dark:text-purple-200">
+          <Alert className="bg-purple-50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-800">
               You have Super Admin privileges. You can create both Participant and Admin users.
-            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Show "Editing Own Account" badge */}
+        {isOwnAccount && (
+          <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+            <Info className="h-4 w-4 text-blue-600" />
+              You are editing your own account information.
+        
+          </Alert>
         )}
 
         {/* Basic Information */}
@@ -350,9 +371,9 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
                     <SelectItem value="ADMIN" disabled={!isSuperAdmin}>
                       <div className="flex items-center justify-between w-full">
                         <span>Admin</span>
-                        {/* {!isSuperAdmin && (
+                        {!isSuperAdmin && (
                           <Shield className="h-3 w-3 ml-2 text-muted-foreground" />
-                        )} */}
+                        )}
                       </div>
                     </SelectItem>
                   </SelectContent>
