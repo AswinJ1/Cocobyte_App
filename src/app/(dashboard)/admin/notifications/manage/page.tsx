@@ -575,7 +575,6 @@ const ManageNotificationsPage = () => {
                         <TableHeader>
                           <TableRow>
                             <TableHead className="w-[150px]">Title</TableHead>
-                            <TableHead className="w-[250px]">Message</TableHead>
                             <TableHead className="w-[120px]">Type</TableHead>
                             <TableHead className="w-[100px]">Priority</TableHead>
                             <TableHead className="w-[120px]">Target</TableHead>
@@ -589,11 +588,6 @@ const ManageNotificationsPage = () => {
                             <TableRow key={notification.id}>
                               <TableCell className="font-medium w-[150px]">
                                 <div className="truncate">{notification.title}</div>
-                              </TableCell>
-                              <TableCell className="w-[250px]">
-                                <div className="truncate text-sm text-muted-foreground">
-                                  {notification.message}
-                                </div>
                               </TableCell>
                               <TableCell className="w-[120px]">
                                 <Badge 

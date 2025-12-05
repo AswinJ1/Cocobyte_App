@@ -89,12 +89,6 @@ const navigation: NavigationItem[] = [
     roles: ["PARTICIPANT"]
   },
   {
-    name: "Contest Info",
-    href: "/participant/contest_info",
-    icon: <CheckCircle className="w-5 h-5" />,
-    roles: ["PARTICIPANT"]
-  },
-  {
     name: "Notifications",
     href: "/participant/notification",
     icon: <Bell className="w-5 h-5" />,

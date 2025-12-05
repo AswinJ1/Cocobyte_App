@@ -155,7 +155,7 @@ export default function UserDetailPage() {
   const getActionTooltip = () => {
     if (!user) return ""
     if (isOwnAccount) return "Cannot delete your own account"
-    if (!isSuperAdmin) return "Only Super Admins can delete users"
+    if (!isSuperAdmin) return "Delete (Super Admin Only)"
     if (user.role === "ADMIN" && user.admin?.isSuperAdmin) return "Cannot delete Super Admin"
     return "Delete User"
   }
@@ -356,12 +356,12 @@ export default function UserDetailPage() {
                     <Shield className="h-3 w-3 mr-1" />
                     {user.role}
                   </Badge>
-                  {user.role === "ADMIN" && user.admin?.isSuperAdmin && (
+                  {/* {user.role === "ADMIN" && user.admin?.isSuperAdmin && (
                     <Badge variant="destructive" className="text-xs">
                       <Shield className="h-3 w-3 mr-1" />
                       Super Admin
                     </Badge>
-                  )}
+                  )} */}
                   {isOwnAccount && (
                     <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
                       <UserCircle className="h-3 w-3 mr-1" />
@@ -631,7 +631,7 @@ export default function UserDetailPage() {
                   label="Profile Created"
                   value={formatDate(user.admin.createdAt)}
                 />
-                {user.admin.isSuperAdmin && (
+                {/* {user.admin.isSuperAdmin && (
                   <div className="pt-2">
                     <Alert className="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800">
                       <Shield className="h-4 w-4 text-red-600" />
@@ -640,7 +640,7 @@ export default function UserDetailPage() {
                       </AlertDescription>
                     </Alert>
                   </div>
-                )}
+                )} */}
               </CardContent>
             </Card>
           )}

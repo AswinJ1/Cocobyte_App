@@ -441,18 +441,17 @@ const UsersPage = () => {
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">User Management</h1>
               {isSuperAdmin && (
                 <Badge variant="destructive" className="text-xs">
-                  <Shield className="h-3 w-3 mr-1" />
                   Super Admin
                 </Badge>
               )}
             </div>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Manage system users and their roles
-              {!isSuperAdmin && (
-                <span className="block sm:inline text-orange-600 dark:text-orange-400 sm:ml-2 mt-1 sm:mt-0">
-                  • Admin operations require Super Admin access
-                </span>
-              )}
+              {/* {!isSuperAdmin && (
+                // <span className="block sm:inline text-orange-600 dark:text-orange-400 sm:ml-2 mt-1 sm:mt-0">
+                //   • Admin operations require Super Admin access
+                // </span>
+              )} */}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -890,12 +889,7 @@ const UsersPage = () => {
                                 <Badge variant={getRoleVariant(user.role)}>
                                   {user.role}
                                 </Badge>
-                                {user.role === "ADMIN" && user.admin?.isSuperAdmin && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    <Shield className="h-3 w-3 mr-1" />
-                                    Super
-                                  </Badge>
-                                )}
+                        
                               </div>
                             </TableCell>
                             <TableCell>

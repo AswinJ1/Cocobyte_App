@@ -328,8 +328,16 @@ export async function DELETE(request: NextRequest) {
 
     if (!session || session.user.role !== "ADMIN") {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: "Unauthorized - Admin access required" },
         { status: 401 }
+      )
+    }
+
+    // Check if user is Super Admin
+    if (!session.user.isSuperAdmin) {
+      return NextResponse.json(
+        { error: "Forbidden - Only Super Admins can delete users" },
+        { status: 403 }
       )
     }
 
@@ -343,9 +351,20 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Check if user exists and their role
+    // Prevent self-deletion
+    if (session.user.id === userId) {
+      return NextResponse.json(
+        { error: "Cannot delete your own account" },
+        { status: 403 }
+      )
+    }
+
+    // Check if user exists and get their details
     const user = await prisma.user.findUnique({
       where: { id: userId },
+      include: {
+        admin: true
+      }
     })
 
     if (!user) {
@@ -355,10 +374,10 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Prevent deletion of admin users
-    if (user.role === "ADMIN") {
+    // Prevent deletion of Super Admin users
+    if (user.role === "ADMIN" && user.admin?.isSuperAdmin) {
       return NextResponse.json(
-        { error: "Cannot delete admin users" },
+        { error: "Cannot delete Super Admin users" },
         { status: 403 }
       )
     }
