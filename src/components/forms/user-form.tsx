@@ -266,7 +266,7 @@ export default function UserForm({ editingUser, onSuccess }: UserFormProps) {
         {/* Super Admin Badge - Show at top for new users */}
         {isSuperAdmin && !editingUser && (
           <Alert className="">
-              You have Super Admin privileges. You can create both Participant and Admin users.
+            You can create both Participant and Admin users.
           </Alert>
         )}
 
