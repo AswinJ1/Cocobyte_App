@@ -88,6 +88,7 @@ model Notification {
   type       NotificationType     @default(INFO)
   priority   NotificationPriority @default(NORMAL)
   targetRole Role?
+  targetSite  String?  // Amritapuri, Mysuru, Coimbatore, Bangalore, or null for all
   actionUrl  String?
   isRead     Boolean              @default(false)
   readAt     DateTime?

@@ -19,6 +19,31 @@ interface CSVRow {
   gender?: string
 }
 
+// Proper CSV parser that handles quoted fields with commas
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inQuotes = false
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    
+    if (char === '"') {
+      inQuotes = !inQuotes
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim())
+      current = ''
+    } else {
+      current += char
+    }
+  }
+  
+  // Push the last field
+  result.push(current.trim())
+  
+  return result
+}
+
 // Generate random password
 function generateRandomPassword(length: number = 12): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
@@ -67,8 +92,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Parse header - normalize to lowercase
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+    // Parse header using proper CSV parser - normalize to lowercase
+    const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase())
     
     // Validate required columns
     const requiredColumns = ['name', 'email', 'college']
@@ -81,10 +106,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Parse rows
+    // Parse rows using proper CSV parser
     const rows: CSVRow[] = []
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim())
+      const values = parseCSVLine(lines[i]).map(v => v.trim())
       const row: any = {}
       
       headers.forEach((header, index) => {
@@ -170,7 +195,6 @@ export async function POST(request: NextRequest) {
               create: {
                 name: row.name,
                 college: row.college,
-                gender: gender,
                 siteName: siteName,
                 teamName: teamName,
                 hostelName: hostelName,
@@ -179,6 +203,7 @@ export async function POST(request: NextRequest) {
                 wifiPassword: wifiPassword,
                 hostelLocation: hostelLocation,
                 contactNumber: contactNumber,
+                gender: gender,
               }
             }
           }

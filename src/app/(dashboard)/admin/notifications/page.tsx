@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Bell, Send, Users } from "lucide-react"
+import { Bell, MapPin, Send, Users } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 const CreateNotificationPage = () => {
@@ -32,6 +32,7 @@ const CreateNotificationPage = () => {
     type: "INFO",
     priority: "NORMAL",
     targetRole: "",
+    targetSite: "",
     isBroadcast: true,
     actionUrl: ""
   })
@@ -54,7 +55,8 @@ const CreateNotificationPage = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          targetRole: formData.targetRole === "ALL" || !formData.targetRole ? null : formData.targetRole
+          targetRole: formData.targetRole === "ALL" ? null : formData.targetRole,
+          targetSite: formData.targetSite === "ALL" ? null : formData.targetSite
         })
       })
 
@@ -67,6 +69,7 @@ const CreateNotificationPage = () => {
           type: "INFO",
           priority: "NORMAL",
           targetRole: "",
+          targetSite: "",
           isBroadcast: true,
           actionUrl: ""
         })
@@ -180,6 +183,31 @@ const CreateNotificationPage = () => {
                     <SelectItem value="PARTICIPANT">Participants Only</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="targetSite" className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Target Site (Optional)
+                </Label>
+                <Select
+                  value={formData.targetSite}
+                  onValueChange={(value) => setFormData({ ...formData, targetSite: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select target site" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Sites</SelectItem>
+                    <SelectItem value="Amritapuri">Amritapuri</SelectItem>
+                    <SelectItem value="Mysuru">Mysuru</SelectItem>
+                    <SelectItem value="Coimbatore">Coimbatore</SelectItem>
+                    <SelectItem value="Bangalore">Bangalore</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Send notification only to users at specific site
+                </p>
               </div>
 
               <div className="space-y-2">

@@ -55,7 +55,8 @@ import {
   Search,
   Filter,
   RefreshCw,
-  MoreVertical
+  MoreVertical,
+  MapPin
 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
@@ -75,12 +76,15 @@ interface Notification {
   type: string
   priority: string
   targetRole: string | null
+  targetSite: string | null  // Add this line
   actionUrl: string | null
   createdAt: string
   userId: string | null
   isRead: boolean
   expiresAt: string | null
 }
+
+const SITES = ["Amritapuri", "Mysuru", "Coimbatore", "Bangalore"]
 
 const ManageNotificationsPage = () => {
   const { data: session } = useSession()
@@ -96,6 +100,7 @@ const ManageNotificationsPage = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterType, setFilterType] = useState<string>("ALL")
   const [filterPriority, setFilterPriority] = useState<string>("ALL")
+  const [filterSite, setFilterSite] = useState<string>("ALL")
 
   const [editFormData, setEditFormData] = useState({
     title: "",
@@ -103,6 +108,7 @@ const ManageNotificationsPage = () => {
     type: "INFO",
     priority: "NORMAL",
     targetRole: "",
+    targetSite: "",  // Add this line
     actionUrl: ""
   })
 
@@ -116,7 +122,7 @@ const ManageNotificationsPage = () => {
 
   useEffect(() => {
     filterNotifications()
-  }, [notifications, searchQuery, filterType, filterPriority])
+  }, [notifications, searchQuery, filterType, filterPriority, filterSite])  // Add filterSite
 
   const fetchNotifications = async () => {
     try {
@@ -157,6 +163,11 @@ const ManageNotificationsPage = () => {
       filtered = filtered.filter(n => n.priority === filterPriority)
     }
 
+    // Site filter - Add this
+    if (filterSite !== "ALL") {
+      filtered = filtered.filter(n => n.targetSite === filterSite)
+    }
+
     setFilteredNotifications(filtered)
   }
 
@@ -168,6 +179,7 @@ const ManageNotificationsPage = () => {
       type: notification.type,
       priority: notification.priority,
       targetRole: notification.targetRole || "",
+      targetSite: notification.targetSite || "",  // Add this line
       actionUrl: notification.actionUrl || ""
     })
     setIsEditDialogOpen(true)
@@ -184,7 +196,10 @@ const ManageNotificationsPage = () => {
           ...editFormData,
           targetRole: editFormData.targetRole === "ALL" || !editFormData.targetRole 
             ? null 
-            : editFormData.targetRole
+            : editFormData.targetRole,
+          targetSite: editFormData.targetSite === "ALL" || !editFormData.targetSite
+            ? null
+            : editFormData.targetSite  // Add this
         })
       })
 
@@ -387,7 +402,7 @@ const ManageNotificationsPage = () => {
         {/* Filters - Responsive */}
         <Card>
           <CardContent className="pt-4 sm:pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="search" className="text-sm">Search</Label>
                 <div className="relative">
@@ -433,6 +448,24 @@ const ManageNotificationsPage = () => {
                     <SelectItem value="NORMAL">Normal</SelectItem>
                     <SelectItem value="HIGH">High</SelectItem>
                     <SelectItem value="URGENT">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="filterSite" className="text-sm flex items-center gap-2">
+                  <MapPin className="h-3 w-3" />
+                  Filter by Site
+                </Label>
+                <Select value={filterSite} onValueChange={setFilterSite}>
+                  <SelectTrigger className="text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Sites</SelectItem>
+                    {SITES.map((site) => (
+                      <SelectItem key={site} value={site}>{site}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -521,6 +554,14 @@ const ManageNotificationsPage = () => {
                         <div className="text-xs text-muted-foreground">
                           {formatDateShort(notification.createdAt)}
                         </div>
+
+                        {/* Site badge - Mobile */}
+                        {notification.targetSite && (
+                          <Badge variant="outline" className="text-xs bg-purple-50 dark:bg-purple-900/20">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {notification.targetSite}
+                          </Badge>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
@@ -528,32 +569,33 @@ const ManageNotificationsPage = () => {
 
                 {/* Desktop Table View */}
                 <div className="hidden lg:block">
-                  <ScrollArea className="h-[600px]">
+                  <div className="overflow-x-auto"> {/* ADD THIS WRAPPER */}
                     <div className="rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="min-w-[150px]">Title</TableHead>
-                            <TableHead className="min-w-[250px]">Message</TableHead>
-                            <TableHead className="min-w-[100px]">Type</TableHead>
-                            <TableHead className="min-w-[100px]">Priority</TableHead>
-                            <TableHead className="min-w-[100px]">Target</TableHead>
-                            <TableHead className="min-w-[150px]">Date</TableHead>
-                            <TableHead className="text-right min-w-[120px]">Actions</TableHead>
+                            <TableHead className="w-[150px]">Title</TableHead>
+                            <TableHead className="w-[250px]">Message</TableHead>
+                            <TableHead className="w-[120px]">Type</TableHead>
+                            <TableHead className="w-[100px]">Priority</TableHead>
+                            <TableHead className="w-[120px]">Target</TableHead>
+                            <TableHead className="w-[120px]">Site</TableHead>
+                            <TableHead className="w-[180px]">Date</TableHead>
+                            <TableHead className="w-[140px] text-right sticky right-0 bg-background">Actions</TableHead> {/* MAKE IT STICKY */}
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {filteredNotifications.map((notification) => (
                             <TableRow key={notification.id}>
-                              <TableCell className="font-medium max-w-[200px]">
+                              <TableCell className="font-medium w-[150px]">
                                 <div className="truncate">{notification.title}</div>
                               </TableCell>
-                              <TableCell className="max-w-[300px]">
+                              <TableCell className="w-[250px]">
                                 <div className="truncate text-sm text-muted-foreground">
                                   {notification.message}
                                 </div>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="w-[120px]">
                                 <Badge 
                                   variant="outline" 
                                   className={cn("text-xs", getTypeColor(notification.type))}
@@ -561,7 +603,7 @@ const ManageNotificationsPage = () => {
                                   {notification.type}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="w-[100px]">
                                 <Badge 
                                   variant="outline" 
                                   className={cn("text-xs", getPriorityColor(notification.priority))}
@@ -569,22 +611,33 @@ const ManageNotificationsPage = () => {
                                   {notification.priority}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="w-[120px]">
                                 <Badge variant="secondary" className="text-xs">
                                   {notification.userId 
                                     ? "Personal" 
                                     : notification.targetRole || "All"}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                              <TableCell className="w-[120px]">
+                                {notification.targetSite ? (
+                                  <Badge variant="outline" className="text-xs bg-purple-50 dark:bg-purple-900/20">
+                                    <MapPin className="h-3 w-3 mr-1" />
+                                    {notification.targetSite}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">All Sites</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground whitespace-nowrap w-[180px]">
                                 {formatDate(notification.createdAt)}
                               </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-2">
+                              <TableCell className="w-[140px] text-right sticky right-0 bg-background"> {/* MAKE IT STICKY */}
+                                <div className="flex items-center justify-end gap-1">
                                   {notification.actionUrl && (
                                     <Button
                                       variant="ghost"
-                                      size="sm"
+                                      size="icon"
+                                      className="h-8 w-8"
                                       onClick={() => router.push(notification.actionUrl!)}
                                       title="View destination"
                                     >
@@ -593,20 +646,21 @@ const ManageNotificationsPage = () => {
                                   )}
                                   <Button
                                     variant="ghost"
-                                    size="sm"
+                                    size="icon"
+                                    className="h-8 w-8"
                                     onClick={() => handleEdit(notification)}
                                     title="Edit notification"
                                   >
-                                    <Edit className="h-4 w-4" />
+                                    <Edit className="h-4 w-4 text-blue-600" />
                                   </Button>
                                   <Button
                                     variant="ghost"
-                                    size="sm"
+                                    size="icon"
+                                    className="h-8 w-8"
                                     onClick={() => setDeleteId(notification.id)}
-                                    className="text-destructive hover:text-destructive"
                                     title="Delete notification"
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-4 w-4 text-red-600" />
                                   </Button>
                                 </div>
                               </TableCell>
@@ -615,7 +669,7 @@ const ManageNotificationsPage = () => {
                         </TableBody>
                       </Table>
                     </div>
-                  </ScrollArea>
+                  </div> {/* CLOSE WRAPPER */}
                 </div>
               </>
             )}
@@ -698,24 +752,50 @@ const ManageNotificationsPage = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-targetRole" className="text-sm">Target Role</Label>
-              <Select
-                value={editFormData.targetRole || "ALL"}
-                onValueChange={(value) => setEditFormData({ 
-                  ...editFormData, 
-                  targetRole: value === "ALL" ? "" : value 
-                })}
-              >
-                <SelectTrigger className="text-sm">
-                  <SelectValue placeholder="All users" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Users</SelectItem>
-                  <SelectItem value="ADMIN">Admins Only</SelectItem>
-                  <SelectItem value="PARTICIPANT">Participants Only</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-targetRole" className="text-sm">Target Role</Label>
+                <Select
+                  value={editFormData.targetRole || "ALL"}
+                  onValueChange={(value) => setEditFormData({ 
+                    ...editFormData, 
+                    targetRole: value === "ALL" ? "" : value 
+                  })}
+                >
+                  <SelectTrigger className="text-sm">
+                    <SelectValue placeholder="All users" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Users</SelectItem>
+                    <SelectItem value="ADMIN">Admins Only</SelectItem>
+                    <SelectItem value="PARTICIPANT">Participants Only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-targetSite" className="text-sm flex items-center gap-2">
+                  <MapPin className="h-3 w-3" />
+                  Target Site
+                </Label>
+                <Select
+                  value={editFormData.targetSite || "ALL"}
+                  onValueChange={(value) => setEditFormData({ 
+                    ...editFormData, 
+                    targetSite: value === "ALL" ? "" : value 
+                  })}
+                >
+                  <SelectTrigger className="text-sm">
+                    <SelectValue placeholder="All sites" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Sites</SelectItem>
+                    {SITES.map((site) => (
+                      <SelectItem key={site} value={site}>{site}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="space-y-2">

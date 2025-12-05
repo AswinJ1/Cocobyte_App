@@ -15,6 +15,16 @@ export async function GET(req: NextRequest) {
     const userId = session.user.id
     const userRole = session.user.role
 
+    // Get user's site if they are a participant
+    let userSite: string | null = null
+    if (userRole === "PARTICIPANT") {
+      const participant = await prisma.participant.findUnique({
+        where: { userId: userId },
+        select: { siteName: true }
+      })
+      userSite = participant?.siteName || null
+    }
+
     // Get both personal and broadcast notifications
     const notifications = await prisma.notification.findMany({
       where: {
@@ -22,8 +32,22 @@ export async function GET(req: NextRequest) {
           {
             OR: [
               { userId: userId },
-              { userId: null, targetRole: userRole },
-              { userId: null, targetRole: null }
+              { 
+                userId: null, 
+                targetRole: userRole,
+                OR: [
+                  { targetSite: null },
+                  { targetSite: userSite }
+                ]
+              },
+              { 
+                userId: null, 
+                targetRole: null,
+                OR: [
+                  { targetSite: null },
+                  { targetSite: userSite }
+                ]
+              }
             ]
           },
           {
@@ -47,8 +71,22 @@ export async function GET(req: NextRequest) {
           {
             OR: [
               { userId: userId },
-              { userId: null, targetRole: userRole },
-              { userId: null, targetRole: null }
+              { 
+                userId: null, 
+                targetRole: userRole,
+                OR: [
+                  { targetSite: null },
+                  { targetSite: userSite }
+                ]
+              },
+              { 
+                userId: null, 
+                targetRole: null,
+                OR: [
+                  { targetSite: null },
+                  { targetSite: userSite }
+                ]
+              }
             ]
           },
           { isRead: false },
@@ -92,7 +130,8 @@ export async function POST(req: NextRequest) {
       type = "INFO",
       priority = "NORMAL",
       targetRole,
-      userIds, // Array of specific user IDs
+      targetSite,
+      userIds,
       isBroadcast = false,
       actionUrl,
       expiresAt
@@ -115,6 +154,7 @@ export async function POST(req: NextRequest) {
           type,
           priority,
           targetRole: targetRole || null,
+          targetSite: targetSite || null,
           createdBy: session.user.id,
           actionUrl: actionUrl || null,
           expiresAt: expiresAt ? new Date(expiresAt) : null
@@ -135,6 +175,7 @@ export async function POST(req: NextRequest) {
           message,
           type,
           priority,
+          targetSite: targetSite || null,
           createdBy: session.user.id,
           actionUrl: actionUrl || null,
           expiresAt: expiresAt ? new Date(expiresAt) : null

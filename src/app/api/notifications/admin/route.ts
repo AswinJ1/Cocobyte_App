@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { Role } from "@prisma/client"
 
 // GET - Fetch all notifications (Admin only)
 export async function GET(req: NextRequest) {
@@ -16,8 +15,7 @@ export async function GET(req: NextRequest) {
     const notifications = await prisma.notification.findMany({
       orderBy: [
         { createdAt: 'desc' }
-      ],
-      take: 200 // Limit to last 200 notifications
+      ]
     })
 
     return NextResponse.json({
@@ -25,7 +23,7 @@ export async function GET(req: NextRequest) {
       total: notifications.length
     })
   } catch (error) {
-    console.error("Error fetching admin notifications:", error)
+    console.error("Error fetching notifications:", error)
     return NextResponse.json(
       { error: "Failed to fetch notifications" },
       { status: 500 }
@@ -53,19 +51,15 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { title, message, type, priority, targetRole, actionUrl } = body
-
-    if (!title || !message) {
-      return NextResponse.json(
-        { error: "Title and message are required" },
-        { status: 400 }
-      )
-    }
-
-    // Validate targetRole if provided
-    const validTargetRole = targetRole && (targetRole === "ADMIN" || targetRole === "PARTICIPANT") 
-      ? targetRole as Role 
-      : null
+    const {
+      title,
+      message,
+      type,
+      priority,
+      targetRole,
+      targetSite,
+      actionUrl
+    } = body
 
     const notification = await prisma.notification.update({
       where: { id: notificationId },
@@ -74,15 +68,15 @@ export async function PATCH(req: NextRequest) {
         message,
         type,
         priority,
-        targetRole: validTargetRole,
-        actionUrl: actionUrl || null
+        targetRole,
+        targetSite,
+        actionUrl
       }
     })
 
     return NextResponse.json({
       success: true,
-      notification,
-      message: "Notification updated successfully"
+      notification
     })
   } catch (error) {
     console.error("Error updating notification:", error)
