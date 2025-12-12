@@ -180,9 +180,9 @@ export function LoginForm() {
                         </SelectContent>
                       </Select>
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2">
-                        <Badge variant={getRoleVariant(watchRole)}>
+                        {/* <Badge variant={getRoleVariant(watchRole)}>
                           {watchRole.replace("_", " ")}
-                        </Badge>
+                        </Badge> */}
                         <FormDescription className="sm:text-right">
                           {getRoleDescription(watchRole)}
                         </FormDescription>
@@ -328,11 +328,11 @@ export function LoginForm() {
                 {/* Footer Links */}
                 <div className="w-full space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <Button variant="link" asChild className="p-0 h-auto font-normal">
+                    {/* <Button variant="link" asChild className="p-0 h-auto font-normal">
                       <Link href="/register">
                         New here? Contact Admin
                       </Link>
-                    </Button>
+                    </Button> */}
                     <Button variant="link" asChild className="p-0 h-auto font-normal text-muted-foreground">
                       <Link href="/forgot-password">
                         Forgot password?
@@ -341,11 +341,11 @@ export function LoginForm() {
                   </div>
                   
                   {/* Help Text */}
-                  <div className="text-center">
+                  {/* <div className="text-center">
                     <p className="text-xs text-muted-foreground">
                       Need help? Contact your hostel administrator
                     </p>
-                  </div>
+                  </div> */}
                 </div>
               </CardFooter>
             </form>

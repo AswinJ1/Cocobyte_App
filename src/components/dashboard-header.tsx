@@ -498,9 +498,9 @@ export default function DashboardHeader() {
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{getUserName()}</p>
                     <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
-                    <Badge variant={getRoleVariant(userRole as string)} className="text-xs mt-1 w-fit">
+                    {/* <Badge variant={getRoleVariant(userRole as string)} className="text-xs mt-1 w-fit">
                       {userRole}
-                    </Badge>
+                    </Badge> */}
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
