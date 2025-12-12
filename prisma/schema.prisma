@@ -54,6 +54,8 @@ model Participant {
   updatedAt      DateTime @updatedAt
   avatarUrl      String?
   gender         String   @default("male")
+  isCheckedIn    Boolean  @default(false)
+  checkInTime    DateTime?
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

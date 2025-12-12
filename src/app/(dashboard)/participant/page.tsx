@@ -48,6 +48,7 @@ interface ParticipantProfile {
     createdAt: string
     gender: "male" | "female"
     avatarUrl?: string
+    checkedIn?: boolean  // Add this field
   }
 }
 
@@ -304,74 +305,98 @@ export default function ParticipantDashboard() {
             </CardContent>
           </Card>
 
-          {/* WiFi Credentials */}
-          <Card className="shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                  <Wifi className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
-                WiFi Credentials
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">WiFi Username</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-lg font-mono font-semibold">
-                    {profile?.participant?.wifiusername || "Not provided"}
-                  </p>
-                  {profile?.participant?.wifiusername && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(profile?.participant?.wifiusername || "", "username")}
-                    >
-                      {copiedField === "username" ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">WiFi Password</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-lg font-mono font-semibold">
-                    {showWifiPassword 
-                      ? (profile?.participant?.wifiPassword || "Not provided")
-                      : "••••••••"}
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowWifiPassword(!showWifiPassword)}
-                  >
-                    {showWifiPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
+           {/* WiFi Credentials - Only show if checked in */}
+          {profile?.participant?.checkedIn ? (
+            <Card className="shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+                    <Wifi className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  WiFi Credentials
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">WiFi Username</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-mono font-semibold">
+                      {profile?.participant?.wifiusername || "Not provided"}
+                    </p>
+                    {profile?.participant?.wifiusername && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(profile?.participant?.wifiusername || "", "username")}
+                      >
+                        {copiedField === "username" ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
                     )}
-                  </Button>
-                  {profile?.participant?.wifiPassword && (
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">WiFi Password</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-mono font-semibold">
+                      {showWifiPassword 
+                        ? (profile?.participant?.wifiPassword || "Not provided")
+                        : "••••••••"}
+                    </p>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => copyToClipboard(profile?.participant?.wifiPassword || "", "password")}
+                      onClick={() => setShowWifiPassword(!showWifiPassword)}
                     >
-                      {copiedField === "password" ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      {showWifiPassword ? (
+                        <EyeOff className="h-4 w-4" />
                       ) : (
-                        <Copy className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       )}
                     </Button>
-                  )}
+                    {profile?.participant?.wifiPassword && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(profile?.participant?.wifiPassword || "", "password")}
+                      >
+                        {copiedField === "password" ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-900/20 flex items-center justify-center">
+                    <Wifi className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  </div>
+                  WiFi Credentials
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-4">
+                  <Wifi className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                  <p className="text-muted-foreground">
+                    WiFi credentials will be available after check-in
+                  </p>
+                  <Badge variant="outline" className="mt-2">
+                    Not Checked In
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Contact Information */}
           <Card className="shadow-lg hover:shadow-xl transition-shadow">

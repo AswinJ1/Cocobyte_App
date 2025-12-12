@@ -26,7 +26,17 @@ import {
   Settings,
   List,
   Cloud,
-  Server
+  Server,
+  Calendar1,
+  CalendarCheck,
+  HelpingHand,
+  HandHelpingIcon,
+  HandHeartIcon,
+  Contact2Icon,
+  Contact,
+  BookCheckIcon,
+  CheckLineIcon,
+  CheckIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -48,6 +58,7 @@ import {
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { Calendar } from "@/components/ui/calendar"
 
 interface NavigationItem {
   name: string
@@ -76,6 +87,12 @@ const navigation: NavigationItem[] = [
     icon: <Users className="w-5 h-5" />,
     roles: ["ADMIN"]
   },
+    {
+    name: "Check-Ins",
+    href: "/admin/check-ins",
+    icon: <CheckIcon className="w-5 h-5" />,
+    roles: ["ADMIN"]
+  },
   {
     name: "System Logs",
     href: "/admin/logs",
@@ -92,6 +109,24 @@ const navigation: NavigationItem[] = [
     name: "Notifications",
     href: "/participant/notification",
     icon: <Bell className="w-5 h-5" />,
+    roles: ["PARTICIPANT"]
+  },
+  {
+    name: "Schedule",
+    href: "/participant/schedule",
+    icon: <CalendarCheck className="w-5 h-5" />,
+    roles: ["PARTICIPANT"]
+  },
+  {
+    name: "Help Desk",
+    href: "/participant/helpdesk",
+    icon: <Contact className="w-5 h-5" />,
+    roles: ["PARTICIPANT"]
+  },
+    {
+    name: "Check In",
+    href: "/participant/check_in",
+    icon: <CheckLineIcon className="w-5 h-5" />,
     roles: ["PARTICIPANT"]
   },
   {

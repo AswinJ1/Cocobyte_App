@@ -53,6 +53,7 @@ interface ParticipantProfile {
     createdAt: string
     gender: "male" | "female"
     avatarUrl?: string
+    checkedIn?: boolean  // Add this field
   }
 }
 
@@ -291,7 +292,7 @@ export default function ParticipantProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Hostel Information Card */}
+        {/* Hostel Information Card */}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -310,26 +311,40 @@ export default function ParticipantProfilePage() {
                 className="font-semibold"
               />
 
-              <div className="space-y-3 pt-2">
-                <Separator />
-                <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border">
-                  <Wifi className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div className="flex-1 space-y-2">
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground">WiFi Username</label>
-                      <p className="text-sm font-mono mt-0.5">{profile.participant.wifiusername}</p>
-                    </div>
-                    <Separator />
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground">WiFi Password</label>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <Lock className="h-3 w-3 text-muted-foreground" />
-                        <p className="text-sm font-mono">{profile.participant.wifiPassword}</p>
+              {profile.participant.checkedIn ? (
+                <div className="space-y-3 pt-2">
+                  <Separator />
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border">
+                    <Wifi className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">WiFi Username</label>
+                        <p className="text-sm font-mono mt-0.5">{profile.participant.wifiusername}</p>
+                      </div>
+                      <Separator />
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">WiFi Password</label>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <Lock className="h-3 w-3 text-muted-foreground" />
+                          <p className="text-sm font-mono">{profile.participant.wifiPassword}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-3 pt-2">
+                  <Separator />
+                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/30 border border-dashed">
+                    <Wifi className="h-5 w-5 text-muted-foreground/50 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">
+                        WiFi credentials will be available after check-in
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {profile.participant.hostelLocation && (
                 <>

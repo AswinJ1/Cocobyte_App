@@ -24,7 +24,8 @@ import {
   Globe,
   Monitor,
   MapPin,
-  UsersRound
+  UsersRound,
+  Home  // Add this import for hostel icon
 } from "lucide-react"
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement } from 'chart.js'
 import { Pie, Bar, Line, Doughnut } from 'react-chartjs-2'
@@ -47,6 +48,7 @@ interface User {
   participant?: {
     siteName?: string
     teamName?: string
+    hostelName?: string
   }
 }
 
@@ -202,6 +204,44 @@ export default function AdminDashboard() {
           'rgba(236, 72, 153, 1)',
           'rgba(14, 165, 233, 1)',
           'rgba(132, 204, 22, 1)',
+          'rgba(249, 115, 22, 1)',
+          'rgba(99, 102, 241, 1)',
+        ],
+        borderWidth: 2,
+      },
+    ],
+  }
+
+  // Hostel distribution data
+  const hostelDistribution = participants.reduce((acc: { [key: string]: number }, user) => {
+    const hostel = user.participant?.hostelName || 'Not Set'
+    acc[hostel] = (acc[hostel] || 0) + 1
+    return acc
+  }, {})
+
+  const hostelData = {
+    labels: Object.keys(hostelDistribution),
+    datasets: [
+      {
+        label: 'Participants by Hostel',
+        data: Object.values(hostelDistribution),
+        backgroundColor: [
+          'rgba(14, 165, 233, 0.8)',   // Cyan
+          'rgba(239, 68, 68, 0.8)',    // Red
+          'rgba(34, 197, 94, 0.8)',    // Green
+          'rgba(251, 191, 36, 0.8)',   // Yellow
+          'rgba(168, 85, 247, 0.8)',   // Purple
+          'rgba(236, 72, 153, 0.8)',   // Pink
+          'rgba(249, 115, 22, 0.8)',   // Orange
+          'rgba(99, 102, 241, 0.8)',   // Indigo
+        ],
+        borderColor: [
+          'rgba(14, 165, 233, 1)',
+          'rgba(239, 68, 68, 1)',
+          'rgba(34, 197, 94, 1)',
+          'rgba(251, 191, 36, 1)',
+          'rgba(168, 85, 247, 1)',
+          'rgba(236, 72, 153, 1)',
           'rgba(249, 115, 22, 1)',
           'rgba(99, 102, 241, 1)',
         ],
@@ -536,8 +576,8 @@ export default function AdminDashboard() {
               </Card>
             </div>
 
-            {/* Second Row - Site & Team Distribution */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Second Row - Site, Hostel & Team Distribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -547,8 +587,23 @@ export default function AdminDashboard() {
                   <CardDescription>Distribution across different sites</CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center">
-                  <div className="w-full max-w-[350px]">
+                  <div className="w-full max-w-[300px]">
                     <Doughnut data={siteData} options={chartOptions} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Home className="h-5 w-5 text-cyan-600" />
+                    Participants by Hostel
+                  </CardTitle>
+                  <CardDescription>Distribution across different hostels</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <div className="w-full max-w-[300px]">
+                    <Pie data={hostelData} options={chartOptions} />
                   </div>
                 </CardContent>
               </Card>
@@ -562,7 +617,7 @@ export default function AdminDashboard() {
                   <CardDescription>Teams with most members</CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center">
-                  <div className="w-full max-w-[350px]">
+                  <div className="w-full max-w-[300px]">
                     <Pie data={teamData} options={chartOptions} />
                   </div>
                 </CardContent>
