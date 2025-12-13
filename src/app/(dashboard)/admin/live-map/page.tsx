@@ -16,7 +16,8 @@ import {
   AlertCircle,
   RefreshCw,
   Filter,
-  MapPinOff
+  MapPinOff,
+  Locate
 } from "lucide-react"
 import dynamic from "next/dynamic"
 import DashboardHeader from "@/components/dashboard-header"
@@ -35,6 +36,21 @@ const Marker = dynamic(
 )
 const Popup = dynamic(
   () => import("react-leaflet").then((mod) => mod.Popup),
+  { ssr: false }
+)
+
+// Component to update map center dynamically
+const MapCenterUpdater = dynamic(
+  () => import("react-leaflet").then((mod) => {
+    const { useMap } = mod
+    return function MapCenterUpdaterInner({ center, zoom }: { center: [number, number]; zoom: number }) {
+      const map = useMap()
+      useEffect(() => {
+        map.setView(center, zoom)
+      }, [map, center, zoom])
+      return null
+    }
+  }),
   { ssr: false }
 )
 
@@ -76,9 +92,10 @@ export default function AdminLiveMapPage() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [selectedSite, setSelectedSite] = useState<string>("All Sites")
   const [isPolling, setIsPolling] = useState(true)
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({ lat: 12.0, lng: 77.0 })
+  const [mapZoom, setMapZoom] = useState(6)
   
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const mapRef = useRef<any>(null)
 
   // Check admin access
   useEffect(() => {
@@ -146,14 +163,38 @@ export default function AdminLiveMapPage() {
     }
   }, [fetchLocations, isPolling])
 
-  // Filter locations by site
+  // Filter locations by site and update map center
   useEffect(() => {
+    let filtered: UserLocation[]
+    
     if (selectedSite === "All Sites") {
-      setFilteredLocations(locations)
+      filtered = locations
     } else {
-      setFilteredLocations(locations.filter(loc => loc.siteName === selectedSite))
+      filtered = locations.filter(loc => loc.siteName === selectedSite)
+    }
+    
+    setFilteredLocations(filtered)
+
+    // Auto-center map based on filtered locations
+    if (filtered.length > 0) {
+      // Calculate center of all filtered locations
+      const avgLat = filtered.reduce((sum, loc) => sum + loc.latitude, 0) / filtered.length
+      const avgLng = filtered.reduce((sum, loc) => sum + loc.longitude, 0) / filtered.length
+      setMapCenter({ lat: avgLat, lng: avgLng })
+      setMapZoom(filtered.length === 1 ? 16 : selectedSite === "All Sites" ? 6 : 14)
+    } else {
+      // Fallback to site center or default
+      const siteCenter = SITE_CENTERS[selectedSite] || SITE_CENTERS["All Sites"]
+      setMapCenter({ lat: siteCenter.lat, lng: siteCenter.lng })
+      setMapZoom(siteCenter.zoom)
     }
   }, [locations, selectedSite])
+
+  // Center on specific user
+  const centerOnUser = (loc: UserLocation) => {
+    setMapCenter({ lat: loc.latitude, lng: loc.longitude })
+    setMapZoom(18)
+  }
 
   // Get site statistics
   const getSiteStats = () => {
@@ -172,7 +213,6 @@ export default function AdminLiveMapPage() {
   }
 
   const siteStats = getSiteStats()
-  const siteCenter = SITE_CENTERS[selectedSite] || SITE_CENTERS["All Sites"]
 
   if (!leafletLoaded || isLoading) {
     return (
@@ -304,12 +344,22 @@ export default function AdminLiveMapPage() {
                 </Alert>
               )}
 
+              {/* Current Map Center Info */}
+              <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
+                <div className="flex items-center gap-2">
+                  <Locate className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">
+                    Map Center: {mapCenter.lat.toFixed(4)}, {mapCenter.lng.toFixed(4)}
+                  </span>
+                </div>
+                <Badge variant="outline">Zoom: {mapZoom}</Badge>
+              </div>
+
               {/* Map */}
               <div className="h-[500px] rounded-lg overflow-hidden border">
                 <MapContainer
-                  key={selectedSite}
-                  center={[siteCenter.lat, siteCenter.lng]}
-                  zoom={siteCenter.zoom}
+                  center={[mapCenter.lat, mapCenter.lng]}
+                  zoom={mapZoom}
                   className="h-full w-full z-0"
                   scrollWheelZoom
                 >
@@ -317,6 +367,11 @@ export default function AdminLiveMapPage() {
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
+                  
+                  {/* Dynamic map center update */}
+                  {MapCenterUpdater && (
+                    <MapCenterUpdater center={[mapCenter.lat, mapCenter.lng]} zoom={mapZoom} />
+                  )}
                   
                   {filteredLocations.map((loc) => (
                     <Marker
@@ -339,7 +394,10 @@ export default function AdminLiveMapPage() {
                           >
                             {loc.siteName}
                           </Badge>
-                          <p className="text-xs text-gray-400 mt-2">
+                          <p className="text-xs text-gray-500 mt-1">
+                            📍 {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
+                          </p>
+                          <p className="text-xs text-gray-400">
                             {new Date(loc.updatedAt).toLocaleTimeString()}
                           </p>
                         </div>
@@ -384,6 +442,7 @@ export default function AdminLiveMapPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Active Participants</CardTitle>
+                <CardDescription>Click on a row to center the map on that participant</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
@@ -395,11 +454,16 @@ export default function AdminLiveMapPage() {
                         <th className="text-left p-2 font-medium">Site</th>
                         <th className="text-left p-2 font-medium">Coordinates</th>
                         <th className="text-left p-2 font-medium">Last Update</th>
+                        <th className="text-left p-2 font-medium">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredLocations.map((loc) => (
-                        <tr key={loc.id} className="border-b hover:bg-muted/50">
+                        <tr 
+                          key={loc.id} 
+                          className="border-b hover:bg-muted/50 cursor-pointer"
+                          onClick={() => centerOnUser(loc)}
+                        >
                           <td className="p-2 font-medium">{loc.participantName}</td>
                           <td className="p-2 text-muted-foreground">{loc.teamName || "-"}</td>
                           <td className="p-2">
@@ -418,6 +482,19 @@ export default function AdminLiveMapPage() {
                           </td>
                           <td className="p-2 text-muted-foreground">
                             {new Date(loc.updatedAt).toLocaleTimeString()}
+                          </td>
+                          <td className="p-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                centerOnUser(loc)
+                              }}
+                            >
+                              <Locate className="h-4 w-4 mr-1" />
+                              Focus
+                            </Button>
                           </td>
                         </tr>
                       ))}

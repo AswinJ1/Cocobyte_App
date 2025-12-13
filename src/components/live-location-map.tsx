@@ -14,7 +14,8 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  RefreshCw
+  RefreshCw,
+  Locate
 } from "lucide-react"
 import dynamic from "next/dynamic"
 
@@ -37,6 +38,21 @@ const Popup = dynamic(
 )
 const Circle = dynamic(
   () => import("react-leaflet").then((mod) => mod.Circle),
+  { ssr: false }
+)
+
+// Component to update map center dynamically
+const MapCenterUpdater = dynamic(
+  () => import("react-leaflet").then((mod) => {
+    const { useMap } = mod
+    return function MapCenterUpdaterInner({ center, zoom }: { center: [number, number]; zoom: number }) {
+      const map = useMap()
+      useEffect(() => {
+        map.setView(center, zoom)
+      }, [map, center, zoom])
+      return null
+    }
+  }),
   { ssr: false }
 )
 
@@ -71,6 +87,9 @@ export default function LiveLocationMap() {
   const [canShare, setCanShare] = useState(false)
   const [leafletLoaded, setLeafletLoaded] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [locationPermission, setLocationPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt')
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({ lat: 9.0942, lng: 76.4961 })
+  const [mapZoom, setMapZoom] = useState(16)
   
   const watchIdRef = useRef<number | null>(null)
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null)
@@ -96,8 +115,22 @@ export default function LiveLocationMap() {
         setLeafletLoaded(true)
       })
 
+      // Check existing permission state (without triggering prompt)
+      if (navigator.permissions) {
+        navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+          setLocationPermission(result.state as 'prompt' | 'granted' | 'denied')
+          result.onchange = () => {
+            setLocationPermission(result.state as 'prompt' | 'granted' | 'denied')
+          }
+        }).catch(() => {
+          // Permissions API not supported
+        })
+      }
+
       return () => {
-        document.head.removeChild(link)
+        if (document.head.contains(link)) {
+          document.head.removeChild(link)
+        }
       }
     }
   }, [])
@@ -121,20 +154,35 @@ export default function LiveLocationMap() {
     }
   }, [])
 
-  // Poll for updates every 3 seconds
+  // Poll for location updates
   useEffect(() => {
     fetchLocations()
-
-    pollIntervalRef.current = setInterval(() => {
-      fetchLocations()
-    }, 3000) // Poll every 3 seconds
-
+    pollIntervalRef.current = setInterval(fetchLocations, 3000)
+    
     return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current)
-      }
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
     }
   }, [fetchLocations])
+
+  // Update map center based on my location or other participants
+  useEffect(() => {
+    if (myLocation) {
+      // Center on user's own location when sharing
+      setMapCenter({ lat: myLocation.lat, lng: myLocation.lng })
+      setMapZoom(17)
+    } else if (locations.length > 0) {
+      // Center on average of all participants
+      const avgLat = locations.reduce((sum, loc) => sum + loc.latitude, 0) / locations.length
+      const avgLng = locations.reduce((sum, loc) => sum + loc.longitude, 0) / locations.length
+      setMapCenter({ lat: avgLat, lng: avgLng })
+      setMapZoom(locations.length === 1 ? 16 : 14)
+    } else {
+      // Fallback to site center
+      const siteCenter = SITE_CENTERS[userSite] || SITE_CENTERS["Amritapuri"]
+      setMapCenter({ lat: siteCenter.lat, lng: siteCenter.lng })
+      setMapZoom(siteCenter.zoom)
+    }
+  }, [myLocation, locations, userSite])
 
   // Update location to server
   const updateServerLocation = useCallback(async (lat: number, lng: number) => {
@@ -149,47 +197,68 @@ export default function LiveLocationMap() {
     }
   }, [])
 
-  // Start sharing location
+  // Start sharing location - ONLY called on button click
   const startSharing = useCallback(() => {
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser")
       return
     }
 
-    setIsSharing(true)
     setError(null)
 
-    // Watch position
-    watchIdRef.current = navigator.geolocation.watchPosition(
+    navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords
         setMyLocation({ lat: latitude, lng: longitude })
         updateServerLocation(latitude, longitude)
+        setIsSharing(true)
+        setLocationPermission('granted')
+
+        // Start watching for updates
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (pos) => {
+            const { latitude: lat, longitude: lng } = pos.coords
+            setMyLocation({ lat, lng })
+            updateServerLocation(lat, lng)
+          },
+          (err) => {
+            console.error("Watch position error:", err)
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+        )
+
+        // Update every 10 seconds
+        updateIntervalRef.current = setInterval(() => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const { latitude: lat, longitude: lng } = pos.coords
+              setMyLocation({ lat, lng })
+              updateServerLocation(lat, lng)
+            },
+            () => {},
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+          )
+        }, 10000)
       },
       (err) => {
         console.error("Geolocation error:", err)
-        setError("Failed to get location. Please enable location services.")
-        setIsSharing(false)
+        setLocationPermission('denied')
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            setError("Location permission denied. Please enable location access in your browser settings.")
+            break
+          case err.POSITION_UNAVAILABLE:
+            setError("Location information unavailable. Please try again.")
+            break
+          case err.TIMEOUT:
+            setError("Location request timed out. Please try again.")
+            break
+          default:
+            setError("Failed to get your location. Please try again.")
+        }
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     )
-
-    // Update every 5 seconds
-    updateIntervalRef.current = setInterval(() => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords
-          setMyLocation({ lat: latitude, lng: longitude })
-          updateServerLocation(latitude, longitude)
-        },
-        () => {},
-        { enableHighAccuracy: true }
-      )
-    }, 5000)
   }, [updateServerLocation])
 
   // Stop sharing location
@@ -213,27 +282,33 @@ export default function LiveLocationMap() {
     }
   }, [])
 
+  // Center map on my location
+  const centerOnMe = useCallback(() => {
+    if (myLocation) {
+      setMapCenter({ lat: myLocation.lat, lng: myLocation.lng })
+      setMapZoom(18)
+    }
+  }, [myLocation])
+
+  // Center on a specific participant
+  const centerOnUser = useCallback((loc: UserLocation) => {
+    setMapCenter({ lat: loc.latitude, lng: loc.longitude })
+    setMapZoom(18)
+  }, [])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current)
-      }
-      if (updateIntervalRef.current) {
-        clearInterval(updateIntervalRef.current)
-      }
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current)
-      }
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
+      if (updateIntervalRef.current) clearInterval(updateIntervalRef.current)
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
     }
   }, [])
-
-  const siteCenter = SITE_CENTERS[userSite] || SITE_CENTERS["Amritapuri"]
 
   if (!leafletLoaded || isLoading) {
     return (
       <Card className="shadow-lg">
-        <CardContent className="flex items-center justify-center h-[500px]">
+        <CardContent className="flex items-center justify-center h-[400px]">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Loading map...</p>
@@ -254,9 +329,7 @@ export default function LiveLocationMap() {
             <div>
               <CardTitle>Live Location Map</CardTitle>
               <CardDescription>
-                {isAdmin 
-                  ? "Viewing all participants across all sites" 
-                  : `Viewing participants at ${userSite}`}
+                {isAdmin ? "All sites" : `${userSite} participants`}
               </CardDescription>
             </div>
           </div>
@@ -265,11 +338,8 @@ export default function LiveLocationMap() {
               <Users className="h-3 w-3" />
               {locations.length} online
             </Badge>
-            {isAdmin && (
-              <Badge variant="secondary">Admin View</Badge>
-            )}
             {lastUpdate && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="secondary" className="text-xs">
                 <RefreshCw className="h-3 w-3 mr-1" />
                 {lastUpdate.toLocaleTimeString()}
               </Badge>
@@ -290,61 +360,96 @@ export default function LiveLocationMap() {
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2">
               <MapPin className={`h-5 w-5 ${isSharing ? "text-green-500 animate-pulse" : "text-muted-foreground"}`} />
-              <span className="text-sm font-medium">
-                {isSharing ? "Sharing your location..." : "Share your location"}
-              </span>
-              {isSharing && myLocation && (
-                <span className="text-xs text-muted-foreground">
-                  ({myLocation.lat.toFixed(4)}, {myLocation.lng.toFixed(4)})
+              <div>
+                <span className="text-sm font-medium">
+                  {isSharing ? "Sharing your location" : "Share your location"}
                 </span>
-              )}
+                {isSharing && myLocation && (
+                  <p className="text-xs text-muted-foreground">
+                    📍 {myLocation.lat.toFixed(4)}, {myLocation.lng.toFixed(4)}
+                  </p>
+                )}
+              </div>
             </div>
-            <Button
-              variant={isSharing ? "destructive" : "default"}
-              size="sm"
-              onClick={isSharing ? stopSharing : startSharing}
-            >
-              {isSharing ? (
-                <>
-                  <EyeOff className="h-4 w-4 mr-2" />
-                  Stop Sharing
-                </>
-              ) : (
-                <>
-                  <Eye className="h-4 w-4 mr-2" />
-                  Start Sharing
-                </>
+            <div className="flex items-center gap-2">
+              {isSharing && myLocation && (
+                <Button variant="outline" size="sm" onClick={centerOnMe}>
+                  <Locate className="h-4 w-4" />
+                </Button>
               )}
-            </Button>
+              <Button
+                variant={isSharing ? "destructive" : "default"}
+                size="sm"
+                onClick={isSharing ? stopSharing : startSharing}
+              >
+                {isSharing ? (
+                  <>
+                    <EyeOff className="h-4 w-4 mr-1" />
+                    Stop
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-1" />
+                    Start
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="flex items-center p-3 bg-muted/50 rounded-lg">
             <Eye className="h-5 w-5 text-muted-foreground mr-2" />
             <span className="text-sm text-muted-foreground">
-              {isAdmin ? "Admin view only - location sharing disabled" : "Loading..."}
+              {isAdmin ? "Admin view - location sharing disabled" : "View only mode"}
             </span>
           </div>
         )}
 
+        {/* Location Permission Warning */}
+        {locationPermission === 'denied' && canShare && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Location access is blocked. Enable location in browser settings to share.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Map Center Info */}
+        <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg text-xs">
+          <div className="flex items-center gap-2">
+            <Locate className="h-3 w-3 text-muted-foreground" />
+            <span className="text-muted-foreground">
+              Center: {mapCenter.lat.toFixed(4)}, {mapCenter.lng.toFixed(4)}
+            </span>
+          </div>
+          <Badge variant="outline" className="text-xs">Zoom: {mapZoom}</Badge>
+        </div>
+
         {/* Map Container */}
-        <div className="h-[450px] rounded-lg overflow-hidden border">
+        <div className="h-[400px] rounded-lg overflow-hidden border">
           <MapContainer
-            center={[myLocation?.lat || siteCenter.lat, myLocation?.lng || siteCenter.lng]}
-            zoom={siteCenter.zoom}
+            center={[mapCenter.lat, mapCenter.lng]}
+            zoom={mapZoom}
             className="h-full w-full z-0"
-            scrollWheelZoom={true}
+            scrollWheelZoom
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+
+            {/* Dynamic map center update */}
+            {MapCenterUpdater && (
+              <MapCenterUpdater center={[mapCenter.lat, mapCenter.lng]} zoom={mapZoom} />
+            )}
             
-            {/* My location with pulsing circle */}
+            {/* My location with blue circle */}
             {myLocation && (
               <>
                 <Circle
                   center={[myLocation.lat, myLocation.lng]}
-                  radius={15}
+                  radius={20}
                   pathOptions={{ 
                     color: "#3b82f6", 
                     fillColor: "#3b82f6", 
@@ -355,27 +460,30 @@ export default function LiveLocationMap() {
                 <Marker position={[myLocation.lat, myLocation.lng]}>
                   <Popup>
                     <div className="text-center font-medium">
-                      📍 You are here
+                      <p>📍 You are here</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {myLocation.lat.toFixed(6)}, {myLocation.lng.toFixed(6)}
+                      </p>
                     </div>
                   </Popup>
                 </Marker>
               </>
             )}
 
-            {/* Other users' markers */}
+            {/* Other participants */}
             {locations.map((loc) => (
-              <Marker
-                key={loc.id}
-                position={[loc.latitude, loc.longitude]}
-              >
+              <Marker key={loc.id} position={[loc.latitude, loc.longitude]}>
                 <Popup>
-                  <div className="text-center p-1 min-w-[120px]">
+                  <div className="text-center min-w-[140px]">
                     <p className="font-semibold text-sm">{loc.participantName}</p>
                     {loc.teamName && (
                       <p className="text-xs text-gray-500">{loc.teamName}</p>
                     )}
                     <p className="text-xs text-gray-500">{loc.siteName}</p>
                     <p className="text-xs text-gray-400 mt-1">
+                      📍 {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
+                    </p>
+                    <p className="text-xs text-gray-400">
                       {new Date(loc.updatedAt).toLocaleTimeString()}
                     </p>
                   </div>
@@ -385,19 +493,57 @@ export default function LiveLocationMap() {
           </MapContainer>
         </div>
 
+        {/* Participants List */}
+        {locations.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Nearby Participants</p>
+            <div className="grid gap-2 max-h-[200px] overflow-y-auto">
+              {locations.map((loc) => (
+                <div
+                  key={loc.id}
+                  className="flex items-center justify-between p-2 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => centerOnUser(loc)}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-xs font-medium">
+                        {loc.participantName.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{loc.participantName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {loc.teamName || loc.siteName}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(loc.updatedAt).toLocaleTimeString()}
+                    </span>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                      <Locate className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Legend */}
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1">
               <div className="h-3 w-3 rounded-full bg-blue-500" />
-              <span>Your location</span>
+              <span>You</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="h-3 w-3 rounded-full bg-red-500" />
-              <span>Other participants</span>
+              <span>Others</span>
             </div>
           </div>
-          <span className="text-xs">Updates every 3 seconds</span>
+          <span className="text-xs">Auto-updates every 3s</span>
         </div>
       </CardContent>
     </Card>
