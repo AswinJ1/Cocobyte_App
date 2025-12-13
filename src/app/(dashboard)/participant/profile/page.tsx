@@ -53,7 +53,7 @@ interface ParticipantProfile {
     createdAt: string
     gender: "male" | "female"
     avatarUrl?: string
-    checkedIn?: boolean  // Add this field
+    isCheckedIn?: boolean  // Changed from checkedIn to isCheckedIn
   }
 }
 
@@ -311,7 +311,7 @@ export default function ParticipantProfilePage() {
                 className="font-semibold"
               />
 
-              {profile.participant.checkedIn ? (
+              {profile.participant.isCheckedIn ? (
                 <div className="space-y-3 pt-2">
                   <Separator />
                   <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border">

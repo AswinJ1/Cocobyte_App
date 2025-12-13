@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw, X, Phone, Mail, Building2, MapPin, Home, DoorOpen, Clock, TimerIcon, UsersIcon, CheckIcon } from "lucide-react";
 
 interface CheckInRecord {
   id: string;
@@ -104,6 +105,16 @@ export default function AdminCheckInsPage() {
     });
   };
 
+  const formatDateTimeShort = (dateString: string | null) => {
+    if (!dateString) return "—";
+    return new Date(dateString).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const filteredCheckIns = checkIns.filter((record) => {
     const matchesSite = siteFilter === "All" || record.siteName === siteFilter;
     const matchesStatus =
@@ -131,31 +142,31 @@ export default function AdminCheckInsPage() {
 
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
-    const maxVisiblePages = 5;
+    const maxVisiblePages = 3; // Reduced for mobile
 
     if (totalPages <= maxVisiblePages) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) {
+      if (currentPage <= 2) {
+        for (let i = 1; i <= 3; i++) {
           pages.push(i);
         }
-        pages.push("...");
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
+        if (totalPages > 3) {
+          pages.push("...");
+          pages.push(totalPages);
+        }
+      } else if (currentPage >= totalPages - 1) {
         pages.push(1);
         pages.push("...");
-        for (let i = totalPages - 3; i <= totalPages; i++) {
+        for (let i = totalPages - 2; i <= totalPages; i++) {
           pages.push(i);
         }
       } else {
         pages.push(1);
         pages.push("...");
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-          pages.push(i);
-        }
+        pages.push(currentPage);
         pages.push("...");
         pages.push(totalPages);
       }
@@ -164,21 +175,23 @@ export default function AdminCheckInsPage() {
     return pages;
   };
 
+  const hasActiveFilters = siteFilter !== "All" || statusFilter !== "All" || searchQuery !== "";
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <DashboardHeader />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
           <div className="space-y-4">
-            <Skeleton className="h-12 w-64" />
-            <Skeleton className="h-8 w-96" />
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Skeleton className="h-32" />
-              <Skeleton className="h-32" />
-              <Skeleton className="h-32" />
-              <Skeleton className="h-32" />
+            <Skeleton className="h-8 sm:h-12 w-48 sm:w-64" />
+            <Skeleton className="h-6 sm:h-8 w-64 sm:w-96" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+              <Skeleton className="h-24 sm:h-32" />
+              <Skeleton className="h-24 sm:h-32" />
+              <Skeleton className="h-24 sm:h-32" />
+              <Skeleton className="h-24 sm:h-32" />
             </div>
-            <Skeleton className="h-[400px]" />
+            <Skeleton className="h-[300px] sm:h-[400px]" />
           </div>
         </div>
       </div>
@@ -189,12 +202,12 @@ export default function AdminCheckInsPage() {
     <div className="min-h-screen bg-background">
       <DashboardHeader />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-4 sm:space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Check-In Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Monitor and manage participant check-ins across all sites
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Check-In Management</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Monitor and manage participant check-ins
           </p>
         </div>
 
@@ -207,89 +220,74 @@ export default function AdminCheckInsPage() {
 
         {/* Statistics Cards */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                    <span className="text-2xl">👥</span>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="h-10 w-10 sm:h-12 sm:w-12  flex items-center justify-center flex-shrink-0">
+                    <UsersIcon className="text-xl sm:text-2xl"/>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Participants</p>
-                    <p className="text-2xl font-bold">{stats.total}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Total</p>
+                    <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                    <span className="text-2xl">✅</span>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="h-10 w-10 sm:h-12 sm:w-12  flex items-center justify-center flex-shrink-0">
+                    <CheckIcon className="text-xl sm:text-2xl"/>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Checked In</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.checkedIn}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                    <span className="text-2xl">⏳</span>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Pending</p>
-                    <p className="text-2xl font-bold text-orange-600">{stats.pending}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Checked In</p>
+                    <p className="text-xl sm:text-2xl font-bold">{stats.checkedIn}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                    <span className="text-2xl">📊</span>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="h-10 w-10 sm:h-12 sm:w-12  flex items-center justify-center flex-shrink-0">
+                    <TimerIcon className="text-xl sm:text-2xl"/>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Check-In Rate</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {stats.total > 0 ? Math.round((stats.checkedIn / stats.total) * 100) : 0}%
-                    </p>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">Pending</p>
+                    <p className="text-xl sm:text-2xl font-bold">{stats.pending}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
           </div>
         )}
 
         {/* Site-wise Stats */}
         {stats && (
           <Card>
-            <CardHeader>
-              <CardTitle>Site-wise Check-In Status</CardTitle>
-              <CardDescription>Overview of check-ins across all campuses</CardDescription>
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="text-base sm:text-lg">Site-wise Status</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Check-ins across all campuses</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {Object.entries(stats.bySite).map(([site, data]) => (
-                  <div key={site} className="p-4 rounded-lg border">
-                    <p className="font-semibold mb-2">{site}</p>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Checked In:</span>
+                  <div key={site} className="p-3 sm:p-4 rounded-lg border">
+                    <p className="font-semibold text-sm sm:text-base mb-2 truncate">{site}</p>
+                    <div className="flex items-center justify-between text-xs sm:text-sm">
+                      <span className="text-muted-foreground">Done:</span>
                       <Badge
                         variant="outline"
-                        className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                        className=" text-xs"
                       >
                         {data.checkedIn}/{data.total}
                       </Badge>
                     </div>
-                    <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="mt-2 h-1.5 sm:h-2 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-green-500 transition-all"
                         style={{
@@ -306,81 +304,173 @@ export default function AdminCheckInsPage() {
 
         {/* Filters */}
         <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <Input
-                  placeholder="Search by name, email, or college..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+          <CardContent className="p-3 sm:p-4">
+            <div className="space-y-3">
+              {/* Search Input */}
+              <Input
+                placeholder="Search name, email, college..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+              />
+              
+              {/* Filter Row */}
+              <div className="flex flex-wrap gap-2 sm:gap-3">
+                <Select value={siteFilter} onValueChange={setSiteFilter}>
+                  <SelectTrigger className="w-[calc(50%-4px)] sm:w-40">
+                    <SelectValue placeholder="Site" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SITES.map((site) => (
+                      <SelectItem key={site} value={site}>
+                        {site}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[calc(50%-4px)] sm:w-40">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUSES.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {hasActiveFilters && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSiteFilter("All");
+                      setStatusFilter("All");
+                      setSearchQuery("");
+                    }}
+                    className="gap-1"
+                  >
+                    <X className="h-3 w-3" />
+                    <span className="hidden sm:inline">Clear</span>
+                  </Button>
+                )}
               </div>
-              <Select value={siteFilter} onValueChange={setSiteFilter}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Filter by Site" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SITES.map((site) => (
-                    <SelectItem key={site} value={site}>
-                      {site}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Filter by Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUSES.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSiteFilter("All");
-                  setStatusFilter("All");
-                  setSearchQuery("");
-                }}
-              >
-                Clear Filters
-              </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Check-Ins Table */}
+        {/* Check-Ins List/Table */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+          <CardHeader className="pb-3 sm:pb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <CardTitle>Participant Check-Ins</CardTitle>
-                <CardDescription>
-                  Showing {startIndex + 1}-{Math.min(endIndex, filteredCheckIns.length)} of{" "}
-                  {filteredCheckIns.length} participants
+                <CardTitle className="text-base sm:text-lg">Participant Check-Ins</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  {startIndex + 1}-{Math.min(endIndex, filteredCheckIns.length)} of {filteredCheckIns.length}
                 </CardDescription>
               </div>
-              <Button variant="outline" onClick={fetchCheckIns}>
+              <Button variant="outline" size="sm" onClick={fetchCheckIns} className="w-full sm:w-auto gap-2">
+                <RefreshCw className="h-4 w-4" />
                 Refresh
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0 sm:px-6">
             {paginatedCheckIns.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12">
+              <div className="flex flex-col items-center justify-center py-12 px-4">
                 <span className="text-4xl mb-4">🔍</span>
-                <h3 className="text-xl font-semibold mb-2">No Results Found</h3>
-                <p className="text-muted-foreground text-center">
+                <h3 className="text-lg sm:text-xl font-semibold mb-2">No Results Found</h3>
+                <p className="text-sm text-muted-foreground text-center">
                   No participants match your current filters.
                 </p>
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
+                {/* Mobile Card View */}
+                <div className="block lg:hidden space-y-3 px-3">
+                  {paginatedCheckIns.map((record, index) => (
+                    <Card key={record.id} className="overflow-hidden">
+                      <CardContent className="p-4">
+                        {/* Header with name and status */}
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="min-w-0 flex-1">
+                            {/* <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">#{startIndex + index + 1}</span>
+                              <Badge
+                                className={
+                                  record.isCheckedIn
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
+                                    : "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400"
+                                }
+                              >
+                                {record.isCheckedIn ? "Checked In" : "Pending"}
+                              </Badge>
+                            </div> */}
+                            <p className="font-semibold mt-1 truncate">{record.name}</p>
+                          </div>
+                        </div>
+
+                        {/* Details Grid */}
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span className="truncate">{record.email}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span className="truncate">{record.college}</span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-x-4 gap-y-2">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                              <Badge variant="outline" className="text-xs">{record.siteName}</Badge>
+                            </div>
+
+                            {record.hostelName && (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Home className="h-3.5 w-3.5 flex-shrink-0" />
+                                <span>{record.hostelName}</span>
+                              </div>
+                            )}
+
+                            {record.roomNumber && (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <DoorOpen className="h-3.5 w-3.5 flex-shrink-0" />
+                                <span>{record.roomNumber}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {record.isCheckedIn && record.checkInTime && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                              <span>{formatDateTimeShort(record.checkInTime)}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Contact Button */}
+                        <div className="mt-3 pt-3 border-t">
+                          <a
+                            href={`tel:${record.contactNumber}`}
+                            className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                          >
+                            <Phone className="h-3.5 w-3.5" />
+                             {record.contactNumber ? record.contactNumber : "Not Given"}
+                          </a>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden lg:block overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -416,15 +506,9 @@ export default function AdminCheckInsPage() {
                           <TableCell>{record.hostelName || "—"}</TableCell>
                           <TableCell>{record.roomNumber || "—"}</TableCell>
                           <TableCell>
-                            <Badge
-                              className={
-                                record.isCheckedIn
-                                  ? "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                                  : "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400"
-                              }
-                            >
+                         
                               {record.isCheckedIn ? "Checked In" : "Pending"}
-                            </Badge>
+
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
                             {formatDateTime(record.checkInTime)}
@@ -434,7 +518,7 @@ export default function AdminCheckInsPage() {
                               href={`tel:${record.contactNumber}`}
                               className="text-primary hover:underline"
                             >
-                              {record.contactNumber}
+                              {record.contactNumber ? record.contactNumber : "Not Given"}
                             </a>
                           </TableCell>
                         </TableRow>
@@ -445,41 +529,43 @@ export default function AdminCheckInsPage() {
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
-                    <p className="text-sm text-muted-foreground">
-                      Page {currentPage} of {totalPages} ({filteredCheckIns.length} total records)
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t px-3 sm:px-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground order-2 sm:order-1">
+                      Page {currentPage} of {totalPages}
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2 order-1 sm:order-2">
                       <Button
                         variant="outline"
-                        size="sm"
+                        size="icon"
+                        className="h-8 w-8"
                         onClick={() => goToPage(1)}
                         disabled={currentPage === 1}
                       >
-                        First
+                        <ChevronsLeft className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
-                        size="sm"
+                        size="icon"
+                        className="h-8 w-8"
                         onClick={() => goToPage(currentPage - 1)}
                         disabled={currentPage === 1}
                       >
-                        Previous
+                        <ChevronLeft className="h-4 w-4" />
                       </Button>
 
                       <div className="flex items-center gap-1">
                         {getPageNumbers().map((page, index) =>
                           page === "..." ? (
-                            <span key={`ellipsis-${index}`} className="px-2 text-muted-foreground">
+                            <span key={`ellipsis-${index}`} className="px-1 sm:px-2 text-muted-foreground text-sm">
                               ...
                             </span>
                           ) : (
                             <Button
                               key={page}
                               variant={currentPage === page ? "default" : "outline"}
-                              size="sm"
+                              size="icon"
+                              className="h-8 w-8 text-xs sm:text-sm"
                               onClick={() => goToPage(page as number)}
-                              className="w-10"
                             >
                               {page}
                             </Button>
@@ -489,19 +575,21 @@ export default function AdminCheckInsPage() {
 
                       <Button
                         variant="outline"
-                        size="sm"
+                        size="icon"
+                        className="h-8 w-8"
                         onClick={() => goToPage(currentPage + 1)}
                         disabled={currentPage === totalPages}
                       >
-                        Next
+                        <ChevronRight className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
-                        size="sm"
+                        size="icon"
+                        className="h-8 w-8"
                         onClick={() => goToPage(totalPages)}
                         disabled={currentPage === totalPages}
                       >
-                        Last
+                        <ChevronsRight className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>

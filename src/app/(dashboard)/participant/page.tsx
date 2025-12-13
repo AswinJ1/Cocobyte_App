@@ -48,7 +48,7 @@ interface ParticipantProfile {
     createdAt: string
     gender: "male" | "female"
     avatarUrl?: string
-    checkedIn?: boolean  // Add this field
+    isCheckedIn?: boolean  // Changed from checkedIn to isCheckedIn
   }
 }
 
@@ -94,6 +94,8 @@ export default function ParticipantDashboard() {
       const response = await fetch("/api/profile")
       if (response.ok) {
         const data = await response.json()
+        console.log("Profile data:", data) // Debug: Check what's being returned
+        console.log("Checked in status:", data?.participant?.checkedIn) // Debug: Check checkedIn value
         setProfile(data)
       } else {
         setError("Failed to load profile data")
@@ -306,7 +308,7 @@ export default function ParticipantDashboard() {
           </Card>
 
            {/* WiFi Credentials - Only show if checked in */}
-          {profile?.participant?.checkedIn ? (
+          {profile?.participant?.isCheckedIn ? (
             <Card className="shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
