@@ -17,7 +17,8 @@ import {
   RefreshCw,
   Filter,
   MapPinOff,
-  Locate
+  Locate,
+  Globe
 } from "lucide-react"
 import dynamic from "next/dynamic"
 import DashboardHeader from "@/components/dashboard-header"
@@ -66,19 +67,15 @@ interface UserLocation {
   updatedAt: string
 }
 
-const SITE_CENTERS: Record<string, { lat: number; lng: number; zoom: number }> = {
-  "All Sites": { lat: 12.0, lng: 77.0, zoom: 6 },
-  "Amritapuri": { lat: 9.0942, lng: 76.4961, zoom: 16 },
-  "Mysuru": { lat: 12.2958, lng: 76.6394, zoom: 16 },
-  "Coimbatore": { lat: 10.9027, lng: 76.9006, zoom: 16 },
-  "Bangalore": { lat: 12.9716, lng: 77.5946, zoom: 16 }
-}
+// Only used as fallback when NO users are online
+const DEFAULT_CENTER = { lat: 20.5937, lng: 78.9629, zoom: 5 } // Center of India
 
 const SITE_COLORS: Record<string, string> = {
   "Amritapuri": "#10b981",
   "Mysuru": "#3b82f6",
   "Coimbatore": "#f59e0b",
-  "Bangalore": "#ef4444"
+  "Bangalore": "#ef4444",
+  "Unknown": "#6b7280"
 }
 
 export default function AdminLiveMapPage() {
@@ -92,8 +89,9 @@ export default function AdminLiveMapPage() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [selectedSite, setSelectedSite] = useState<string>("All Sites")
   const [isPolling, setIsPolling] = useState(true)
-  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({ lat: 12.0, lng: 77.0 })
-  const [mapZoom, setMapZoom] = useState(6)
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>(DEFAULT_CENTER)
+  const [mapZoom, setMapZoom] = useState(DEFAULT_CENTER.zoom)
+  const [isFirstLoad, setIsFirstLoad] = useState(true)
   
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -107,10 +105,13 @@ export default function AdminLiveMapPage() {
   // Load Leaflet CSS and fix icons
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const link = document.createElement("link")
-      link.rel = "stylesheet"
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      document.head.appendChild(link)
+      if (!document.getElementById("leaflet-css-admin")) {
+        const link = document.createElement("link")
+        link.rel = "stylesheet"
+        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        link.id = "leaflet-css-admin"
+        document.head.appendChild(link)
+      }
 
       import("leaflet").then((L) => {
         delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -121,12 +122,6 @@ export default function AdminLiveMapPage() {
         })
         setLeafletLoaded(true)
       })
-
-      return () => {
-        if (document.head.contains(link)) {
-          document.head.removeChild(link)
-        }
-      }
     }
   }, [])
 
@@ -136,9 +131,19 @@ export default function AdminLiveMapPage() {
       const response = await fetch("/api/location")
       if (response.ok) {
         const data = await response.json()
-        setLocations(data.locations)
+        const locs = data.locations || []
+        setLocations(locs)
         setLastUpdate(new Date())
         setError(null)
+        
+        // Auto-center on first load if we have locations
+        if (isFirstLoad && locs.length > 0) {
+          const avgLat = locs.reduce((sum: number, loc: UserLocation) => sum + loc.latitude, 0) / locs.length
+          const avgLng = locs.reduce((sum: number, loc: UserLocation) => sum + loc.longitude, 0) / locs.length
+          setMapCenter({ lat: avgLat, lng: avgLng })
+          setMapZoom(locs.length === 1 ? 16 : 10)
+          setIsFirstLoad(false)
+        }
       } else {
         setError("Failed to fetch locations")
       }
@@ -148,7 +153,7 @@ export default function AdminLiveMapPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [isFirstLoad])
 
   // Poll for updates
   useEffect(() => {
@@ -163,7 +168,7 @@ export default function AdminLiveMapPage() {
     }
   }, [fetchLocations, isPolling])
 
-  // Filter locations by site and update map center
+  // Filter locations by site
   useEffect(() => {
     let filtered: UserLocation[]
     
@@ -174,21 +179,31 @@ export default function AdminLiveMapPage() {
     }
     
     setFilteredLocations(filtered)
-
-    // Auto-center map based on filtered locations
-    if (filtered.length > 0) {
-      // Calculate center of all filtered locations
-      const avgLat = filtered.reduce((sum, loc) => sum + loc.latitude, 0) / filtered.length
-      const avgLng = filtered.reduce((sum, loc) => sum + loc.longitude, 0) / filtered.length
-      setMapCenter({ lat: avgLat, lng: avgLng })
-      setMapZoom(filtered.length === 1 ? 16 : selectedSite === "All Sites" ? 6 : 14)
-    } else {
-      // Fallback to site center or default
-      const siteCenter = SITE_CENTERS[selectedSite] || SITE_CENTERS["All Sites"]
-      setMapCenter({ lat: siteCenter.lat, lng: siteCenter.lng })
-      setMapZoom(siteCenter.zoom)
-    }
   }, [locations, selectedSite])
+
+  // Center on all filtered locations
+  const centerOnAll = useCallback(() => {
+    if (filteredLocations.length > 0) {
+      const avgLat = filteredLocations.reduce((sum, loc) => sum + loc.latitude, 0) / filteredLocations.length
+      const avgLng = filteredLocations.reduce((sum, loc) => sum + loc.longitude, 0) / filteredLocations.length
+      setMapCenter({ lat: avgLat, lng: avgLng })
+      
+      // Calculate appropriate zoom based on spread
+      if (filteredLocations.length === 1) {
+        setMapZoom(16)
+      } else {
+        const latSpread = Math.max(...filteredLocations.map(l => l.latitude)) - Math.min(...filteredLocations.map(l => l.latitude))
+        const lngSpread = Math.max(...filteredLocations.map(l => l.longitude)) - Math.min(...filteredLocations.map(l => l.longitude))
+        const maxSpread = Math.max(latSpread, lngSpread)
+        
+        if (maxSpread > 5) setMapZoom(5)
+        else if (maxSpread > 2) setMapZoom(7)
+        else if (maxSpread > 0.5) setMapZoom(10)
+        else if (maxSpread > 0.1) setMapZoom(12)
+        else setMapZoom(14)
+      }
+    }
+  }, [filteredLocations])
 
   // Center on specific user
   const centerOnUser = (loc: UserLocation) => {
@@ -198,21 +213,15 @@ export default function AdminLiveMapPage() {
 
   // Get site statistics
   const getSiteStats = () => {
-    const stats: Record<string, number> = {
-      "Amritapuri": 0,
-      "Mysuru": 0,
-      "Coimbatore": 0,
-      "Bangalore": 0
-    }
+    const stats: Record<string, number> = {}
     locations.forEach(loc => {
-      if (stats[loc.siteName] !== undefined) {
-        stats[loc.siteName]++
-      }
+      stats[loc.siteName] = (stats[loc.siteName] || 0) + 1
     })
     return stats
   }
 
   const siteStats = getSiteStats()
+  const uniqueSites = Object.keys(siteStats)
 
   if (!leafletLoaded || isLoading) {
     return (
@@ -246,7 +255,7 @@ export default function AdminLiveMapPage() {
                 Live Location Tracker
               </h1>
               <p className="text-muted-foreground mt-1">
-                Real-time participant locations across all sites
+                Real-time participant locations (centered on actual GPS data)
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -264,31 +273,43 @@ export default function AdminLiveMapPage() {
             </div>
           </div>
 
-          {/* Stats Cards */}
+          {/* Stats Cards - Dynamic based on actual data */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <Card 
               className={`cursor-pointer transition-all ${selectedSite === "All Sites" ? "ring-2 ring-primary" : "hover:shadow-md"}`}
-              onClick={() => setSelectedSite("All Sites")}
+              onClick={() => {
+                setSelectedSite("All Sites")
+                centerOnAll()
+              }}
             >
               <CardContent className="p-4 text-center">
-                <Users className="h-6 w-6 mx-auto mb-2 text-primary" />
+                <Globe className="h-6 w-6 mx-auto mb-2 text-primary" />
                 <p className="text-2xl font-bold">{locations.length}</p>
-                <p className="text-xs text-muted-foreground">All Sites</p>
+                <p className="text-xs text-muted-foreground">All Users</p>
               </CardContent>
             </Card>
             
-            {Object.entries(siteStats).map(([site, count]) => (
+            {uniqueSites.map((site) => (
               <Card 
                 key={site}
                 className={`cursor-pointer transition-all ${selectedSite === site ? "ring-2 ring-primary" : "hover:shadow-md"}`}
-                onClick={() => setSelectedSite(site)}
+                onClick={() => {
+                  setSelectedSite(site)
+                  const siteLocs = locations.filter(l => l.siteName === site)
+                  if (siteLocs.length > 0) {
+                    const avgLat = siteLocs.reduce((sum, loc) => sum + loc.latitude, 0) / siteLocs.length
+                    const avgLng = siteLocs.reduce((sum, loc) => sum + loc.longitude, 0) / siteLocs.length
+                    setMapCenter({ lat: avgLat, lng: avgLng })
+                    setMapZoom(siteLocs.length === 1 ? 16 : 14)
+                  }
+                }}
               >
                 <CardContent className="p-4 text-center">
                   <MapPin 
                     className="h-6 w-6 mx-auto mb-2" 
-                    style={{ color: SITE_COLORS[site] }} 
+                    style={{ color: SITE_COLORS[site] || SITE_COLORS["Unknown"] }} 
                   />
-                  <p className="text-2xl font-bold">{count}</p>
+                  <p className="text-2xl font-bold">{siteStats[site]}</p>
                   <p className="text-xs text-muted-foreground">{site}</p>
                 </CardContent>
               </Card>
@@ -315,19 +336,40 @@ export default function AdminLiveMapPage() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Select value={selectedSite} onValueChange={setSelectedSite}>
+                  <Select value={selectedSite} onValueChange={(val) => {
+                    setSelectedSite(val)
+                    if (val === "All Sites") {
+                      centerOnAll()
+                    } else {
+                      const siteLocs = locations.filter(l => l.siteName === val)
+                      if (siteLocs.length > 0) {
+                        const avgLat = siteLocs.reduce((sum, loc) => sum + loc.latitude, 0) / siteLocs.length
+                        const avgLng = siteLocs.reduce((sum, loc) => sum + loc.longitude, 0) / siteLocs.length
+                        setMapCenter({ lat: avgLat, lng: avgLng })
+                        setMapZoom(siteLocs.length === 1 ? 16 : 14)
+                      }
+                    }
+                  }}>
                     <SelectTrigger className="w-[160px]">
                       <Filter className="h-4 w-4 mr-2" />
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="All Sites">All Sites</SelectItem>
-                      <SelectItem value="Amritapuri">Amritapuri</SelectItem>
-                      <SelectItem value="Mysuru">Mysuru</SelectItem>
-                      <SelectItem value="Coimbatore">Coimbatore</SelectItem>
-                      <SelectItem value="Bangalore">Bangalore</SelectItem>
+                      {uniqueSites.map(site => (
+                        <SelectItem key={site} value={site}>{site}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={centerOnAll}
+                    title="Center on all users"
+                  >
+                    <Locate className="h-4 w-4" />
+                  </Button>
                   
                   <Button variant="outline" size="icon" onClick={fetchLocations}>
                     <RefreshCw className="h-4 w-4" />
@@ -344,15 +386,23 @@ export default function AdminLiveMapPage() {
                 </Alert>
               )}
 
-              {/* Current Map Center Info */}
+              {/* Current Map Center Info - Shows REAL coordinates */}
               <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
                 <div className="flex items-center gap-2">
                   <Locate className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">
-                    Map Center: {mapCenter.lat.toFixed(4)}, {mapCenter.lng.toFixed(4)}
+                  <span className="text-muted-foreground font-mono">
+                    Center: {mapCenter.lat.toFixed(6)}, {mapCenter.lng.toFixed(6)}
                   </span>
                 </div>
-                <Badge variant="outline">Zoom: {mapZoom}</Badge>
+                <div className="flex items-center gap-2">
+                  {filteredLocations.length > 0 && (
+                    <Badge variant="default" className="bg-green-500">
+                      <MapPin className="h-3 w-3 mr-1" />
+                      LIVE DATA
+                    </Badge>
+                  )}
+                  <Badge variant="outline">Zoom: {mapZoom}</Badge>
+                </div>
               </div>
 
               {/* Map */}
@@ -369,9 +419,7 @@ export default function AdminLiveMapPage() {
                   />
                   
                   {/* Dynamic map center update */}
-                  {MapCenterUpdater && (
-                    <MapCenterUpdater center={[mapCenter.lat, mapCenter.lng]} zoom={mapZoom} />
-                  )}
+                  <MapCenterUpdater center={[mapCenter.lat, mapCenter.lng]} zoom={mapZoom} />
                   
                   {filteredLocations.map((loc) => (
                     <Marker
@@ -388,14 +436,14 @@ export default function AdminLiveMapPage() {
                             variant="outline" 
                             className="mt-1 text-xs"
                             style={{ 
-                              borderColor: SITE_COLORS[loc.siteName],
-                              color: SITE_COLORS[loc.siteName]
+                              borderColor: SITE_COLORS[loc.siteName] || SITE_COLORS["Unknown"],
+                              color: SITE_COLORS[loc.siteName] || SITE_COLORS["Unknown"]
                             }}
                           >
                             {loc.siteName}
                           </Badge>
-                          <p className="text-xs text-gray-500 mt-1">
-                            📍 {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
+                          <p className="text-xs text-gray-500 mt-1 font-mono">
+                            📍 {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
                           </p>
                           <p className="text-xs text-gray-400">
                             {new Date(loc.updatedAt).toLocaleTimeString()}
@@ -412,28 +460,33 @@ export default function AdminLiveMapPage() {
                 <div className="text-center py-8">
                   <MapPinOff className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
                   <p className="text-muted-foreground">
-                    No active participants {selectedSite !== "All Sites" ? `at ${selectedSite}` : ""}
+                    No active participants sharing location
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Participants need to click &quot;Start&quot; to share their GPS location
                   </p>
                 </div>
               )}
 
-              {/* Legend */}
-              <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
-                <div className="flex flex-wrap items-center gap-4">
-                  {Object.entries(SITE_COLORS).map(([site, color]) => (
-                    <div key={site} className="flex items-center gap-1">
-                      <div 
-                        className="h-3 w-3 rounded-full" 
-                        style={{ backgroundColor: color }}
-                      />
-                      <span className="text-muted-foreground">{site}</span>
-                    </div>
-                  ))}
+              {/* Dynamic Legend based on actual data */}
+              {uniqueSites.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
+                  <div className="flex flex-wrap items-center gap-4">
+                    {uniqueSites.map((site) => (
+                      <div key={site} className="flex items-center gap-1">
+                        <div 
+                          className="h-3 w-3 rounded-full" 
+                          style={{ backgroundColor: SITE_COLORS[site] || SITE_COLORS["Unknown"] }}
+                        />
+                        <span className="text-muted-foreground">{site} ({siteStats[site]})</span>
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    Auto-refresh every 3 seconds
+                  </span>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  Auto-refresh every 3 seconds
-                </span>
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -442,7 +495,7 @@ export default function AdminLiveMapPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Active Participants</CardTitle>
-                <CardDescription>Click on a row to center the map on that participant</CardDescription>
+                <CardDescription>Click on a row to center the map on that participant&apos;s real GPS location</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
@@ -452,7 +505,7 @@ export default function AdminLiveMapPage() {
                         <th className="text-left p-2 font-medium">Name</th>
                         <th className="text-left p-2 font-medium">Team</th>
                         <th className="text-left p-2 font-medium">Site</th>
-                        <th className="text-left p-2 font-medium">Coordinates</th>
+                        <th className="text-left p-2 font-medium">GPS Coordinates</th>
                         <th className="text-left p-2 font-medium">Last Update</th>
                         <th className="text-left p-2 font-medium">Action</th>
                       </tr>
@@ -470,15 +523,15 @@ export default function AdminLiveMapPage() {
                             <Badge 
                               variant="outline"
                               style={{ 
-                                borderColor: SITE_COLORS[loc.siteName],
-                                color: SITE_COLORS[loc.siteName]
+                                borderColor: SITE_COLORS[loc.siteName] || SITE_COLORS["Unknown"],
+                                color: SITE_COLORS[loc.siteName] || SITE_COLORS["Unknown"]
                               }}
                             >
                               {loc.siteName}
                             </Badge>
                           </td>
                           <td className="p-2 font-mono text-xs text-muted-foreground">
-                            {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
+                            {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
                           </td>
                           <td className="p-2 text-muted-foreground">
                             {new Date(loc.updatedAt).toLocaleTimeString()}
