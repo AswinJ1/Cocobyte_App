@@ -199,10 +199,10 @@ export default function LiveLocationMap() {
     onFail: (msg: string) => void
   ) => {
     const strategies: PositionOptions[] = [
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 },
-      { enableHighAccuracy: false, timeout: 30000, maximumAge: 120000 },
-      { enableHighAccuracy: false, timeout: 60000, maximumAge: 300000 },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },      // GPS only, no cache
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },      // GPS with longer timeout
+      { enableHighAccuracy: true, timeout: 45000, maximumAge: 30000 },  // GPS with some cache
+      { enableHighAccuracy: false, timeout: 60000, maximumAge: 60000 }, // Fallback only if GPS fails
     ]
 
     const options = strategies[Math.min(attempt, strategies.length - 1)]
@@ -212,13 +212,19 @@ export default function LiveLocationMap() {
       (position) => {
         const { latitude, longitude, accuracy } = position.coords
         console.log(`✅ Got location (accuracy: ${accuracy?.toFixed(0)}m):`, latitude, longitude)
+        
+        // Warn if accuracy is poor (> 100 meters)
+        if (accuracy && accuracy > 100) {
+          console.warn(`⚠️ Low accuracy: ${accuracy}m - location may be inaccurate`)
+        }
+        
         onSuccess(latitude, longitude)
       },
       (err) => {
         console.warn(`❌ Attempt ${attempt + 1} failed:`, err.code, err.message)
         
         if (attempt < strategies.length - 1) {
-          setTimeout(() => tryGetLocation(attempt + 1, onSuccess, onFail), 500)
+          setTimeout(() => tryGetLocation(attempt + 1, onSuccess, onFail), 1000)
         } else {
           let message = "Failed to get your location after multiple attempts."
           switch (err.code) {
@@ -227,10 +233,10 @@ export default function LiveLocationMap() {
               setLocationPermission('denied')
               break
             case 2:
-              message = "Location unavailable. Please ensure GPS/Location is enabled on your device."
+              message = "Location unavailable. Please ensure GPS/Location is enabled on your device and try outdoors."
               break
             case 3:
-              message = "Location request timed out. Please try again."
+              message = "Location request timed out. Please move to an area with better GPS signal."
               break
           }
           onFail(message)
@@ -260,19 +266,19 @@ export default function LiveLocationMap() {
         setLocationPermission('granted')
         setError(null)
 
-        // Start watching for updates
+        // Start watching for updates - USE HIGH ACCURACY
         watchIdRef.current = navigator.geolocation.watchPosition(
           (pos) => {
-            const { latitude: lat, longitude: lng } = pos.coords
-            console.log("📍 Watch update:", lat.toFixed(6), lng.toFixed(6))
+            const { latitude: lat, longitude: lng, accuracy } = pos.coords
+            console.log(`📍 Watch update (accuracy: ${accuracy?.toFixed(0)}m):`, lat.toFixed(6), lng.toFixed(6))
             setMyLocation({ lat, lng })
             updateServerLocation(lat, lng)
           },
           (err) => console.warn("Watch error:", err.code),
-          { enableHighAccuracy: false, timeout: 30000, maximumAge: 10000 }
+          { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }  // Changed to high accuracy
         )
 
-        // Periodic update every 15 seconds
+        // Periodic update every 15 seconds - USE HIGH ACCURACY
         updateIntervalRef.current = setInterval(() => {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
@@ -281,7 +287,7 @@ export default function LiveLocationMap() {
               updateServerLocation(lat, lng)
             },
             () => {},
-            { enableHighAccuracy: false, timeout: 20000, maximumAge: 30000 }
+            { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 }  // Changed to high accuracy
           )
         }, 15000)
       },
