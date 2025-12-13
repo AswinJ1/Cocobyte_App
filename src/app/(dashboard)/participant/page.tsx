@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import DashboardHeader from "@/components/dashboard-header"
+import LiveLocationMap from "@/components/live-location-map"
 import { 
   Loader2, 
   Wifi,
@@ -468,6 +469,11 @@ export default function ParticipantDashboard() {
             </CardContent>
           </Card>
         )}
+
+        {/* Live Location Map */}
+        <div className="mb-8">
+          <LiveLocationMap />
+        </div>
 
         {/* Dynamic Campus Map based on Site */}
         <Card className="shadow-lg">

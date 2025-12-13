@@ -36,7 +36,9 @@ import {
   Contact,
   BookCheckIcon,
   CheckLineIcon,
-  CheckIcon
+  CheckIcon,
+  MapPin,
+  Map
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -133,6 +135,12 @@ const navigation: NavigationItem[] = [
     name: "Profile",
     href: "/admin/profile",
     icon: <User className="w-5 h-5" />,
+    roles: ["ADMIN"]
+  },
+   {
+    name: "Realtime map",
+    href: "/admin/live-map",
+    icon: <Map className="w-5 h-5" />,
     roles: ["ADMIN"]
   },
   {

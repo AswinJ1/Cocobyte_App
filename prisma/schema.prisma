@@ -57,6 +57,7 @@ model Participant {
   isCheckedIn    Boolean  @default(false)
   checkInTime    DateTime?
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location     UserLocation?
 }
 
 model LoginLog {
@@ -104,6 +105,20 @@ model Notification {
   @@index([createdAt])
   @@index([isRead])
   @@index([targetRole])
+}
+
+model UserLocation {
+  id           String   @id @default(cuid())
+  participantId String  @unique
+  participant  Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  latitude     Float
+  longitude    Float
+  siteName     String
+  updatedAt    DateTime @updatedAt
+  isActive     Boolean  @default(true)
+
+  @@index([siteName])
+  @@index([isActive])
 }
 
 enum Role {
