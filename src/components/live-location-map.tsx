@@ -1,11 +1,14 @@
 "use client"
 
-import { useEffect, useState, useRef, useCallback } from "react"
+import { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
 import { 
   MapPin, 
   Users, 
@@ -20,11 +23,7 @@ import {
   Monitor,
   Route,
   X,
-  ArrowRight,
-  CornerUpRight,
-  CornerUpLeft,
-  ArrowUp,
-  RotateCcw
+  ChevronRight
 } from "lucide-react"
 import dynamic from "next/dynamic"
 
@@ -58,7 +57,6 @@ const Polyline = dynamic(
 const MapCenterUpdater = dynamic(
   () => import("react-leaflet").then((mod) => {
     const { useMap } = mod
-    // Import useRef and useEffect from React for this component
     const React = require('react')
     
     return function MapCenterUpdaterInner({ center, zoom, shouldUpdate }: { center: [number, number]; zoom: number; shouldUpdate: boolean }) {
@@ -66,7 +64,6 @@ const MapCenterUpdater = dynamic(
       const hasUpdatedRef = React.useRef(false)
       
       React.useEffect(() => {
-        // Only update when shouldUpdate becomes true
         if (shouldUpdate && !hasUpdatedRef.current) {
           map.setView(center, zoom)
           hasUpdatedRef.current = true
@@ -79,6 +76,128 @@ const MapCenterUpdater = dynamic(
   }),
   { ssr: false }
 )
+
+// Enhanced custom marker icon creator with better avatar styling
+const createCustomIcon = (initial: string, avatarUrl?: string, isMe: boolean = false) => {
+  if (typeof window === 'undefined') return null
+  
+  const L = require('leaflet')
+  
+  const borderColor = isMe ? '#3b82f6' : '#ef4444'
+  const bgColor = isMe ? '#3b82f6' : '#ef4444'
+  const pulseColor = isMe ? 'rgba(59, 130, 246, 0.4)' : 'rgba(239, 68, 68, 0.3)'
+  
+  const iconHtml = avatarUrl 
+    ? `<div class="marker-container" style="position: relative;">
+        <div style="
+          width: 44px; 
+          height: 44px; 
+          border-radius: 50%; 
+          border: 3px solid ${borderColor}; 
+          background: white;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.25), 0 0 0 2px white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          position: relative;
+          z-index: 2;
+        ">
+          <img 
+            src="${avatarUrl}" 
+            style="width: 100%; height: 100%; object-fit: cover;" 
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" 
+          />
+          <div style="
+            display: none; 
+            width: 100%; 
+            height: 100%; 
+            background: ${bgColor}; 
+            color: white; 
+            font-weight: bold; 
+            font-size: 14px; 
+            align-items: center; 
+            justify-content: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+          ">${initial}</div>
+        </div>
+        ${isMe ? `<div style="
+          position: absolute;
+          top: -4px;
+          left: -4px;
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          background: ${pulseColor};
+          animation: pulse 2s ease-in-out infinite;
+          z-index: 1;
+        "></div>` : ''}
+        <div style="
+          position: absolute;
+          bottom: -6px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 0;
+          height: 0;
+          border-left: 8px solid transparent;
+          border-right: 8px solid transparent;
+          border-top: 10px solid ${borderColor};
+          filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+        "></div>
+      </div>`
+    : `<div class="marker-container" style="position: relative;">
+        <div style="
+          width: 44px; 
+          height: 44px; 
+          border-radius: 50%; 
+          background: linear-gradient(135deg, ${bgColor} 0%, ${isMe ? '#2563eb' : '#dc2626'} 100%);
+          border: 3px solid white;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: bold;
+          font-size: 15px;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+          position: relative;
+          z-index: 2;
+        ">${initial}</div>
+        ${isMe ? `<div style="
+          position: absolute;
+          top: -4px;
+          left: -4px;
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          background: ${pulseColor};
+          animation: pulse 2s ease-in-out infinite;
+          z-index: 1;
+        "></div>` : ''}
+        <div style="
+          position: absolute;
+          bottom: -6px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 0;
+          height: 0;
+          border-left: 8px solid transparent;
+          border-right: 8px solid transparent;
+          border-top: 10px solid ${isMe ? '#3b82f6' : '#ef4444'};
+          filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+        "></div>
+      </div>`
+  
+  return L.divIcon({
+    html: iconHtml,
+    className: 'custom-marker-icon',
+    iconSize: [44, 54],
+    iconAnchor: [22, 54],
+    popupAnchor: [0, -54]
+  })
+}
 
 interface UserLocation {
   id: string
@@ -101,56 +220,33 @@ interface RouteStep {
 
 interface RouteInfo {
   coordinates: [number, number][]
-  distance: number // in meters
-  duration: number // in seconds
+  distance: number
+  duration: number
   steps: RouteStep[]
 }
 
-// Only used as fallback when NO location data is available
-const DEFAULT_CENTER = { lat: 20.5937, lng: 78.9629, zoom: 5 } // Center of India
+const DEFAULT_CENTER = { lat: 20.5937, lng: 78.9629, zoom: 5 }
 
-// Detect if user is on mobile device
 const isMobileDevice = () => {
   if (typeof window === 'undefined') return false
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 }
 
-// Get maneuver icon
-const getManeuverIcon = (maneuver: string) => {
-  if (maneuver.includes('turn-right') || maneuver.includes('right')) {
-    return <CornerUpRight className="h-4 w-4 text-blue-600" />
-  } else if (maneuver.includes('turn-left') || maneuver.includes('left')) {
-    return <CornerUpLeft className="h-4 w-4 text-blue-600" />
-  } else if (maneuver.includes('straight') || maneuver.includes('continue')) {
-    return <ArrowUp className="h-4 w-4 text-blue-600" />
-  } else if (maneuver.includes('uturn') || maneuver.includes('u-turn')) {
-    return <RotateCcw className="h-4 w-4 text-blue-600" />
-  } else if (maneuver.includes('arrive') || maneuver.includes('destination')) {
-    return <MapPin className="h-4 w-4 text-green-600" />
-  } else {
-    return <ArrowRight className="h-4 w-4 text-blue-600" />
-  }
-}
-
-// Format distance
 const formatDistance = (meters: number) => {
-  if (meters < 1000) {
-    return `${Math.round(meters)} m`
-  }
+  if (meters < 1000) return `${Math.round(meters)} m`
   return `${(meters / 1000).toFixed(1)} km`
 }
 
-// Format duration
 const formatDuration = (seconds: number) => {
-  if (seconds < 60) {
-    return `${Math.round(seconds)} sec`
-  } else if (seconds < 3600) {
-    return `${Math.round(seconds / 60)} min`
-  } else {
-    const hours = Math.floor(seconds / 3600)
-    const mins = Math.round((seconds % 3600) / 60)
-    return `${hours}h ${mins}m`
-  }
+  if (seconds < 60) return `${Math.round(seconds)} sec`
+  if (seconds < 3600) return `${Math.round(seconds / 60)} min`
+  const hours = Math.floor(seconds / 3600)
+  const mins = Math.round((seconds % 3600) / 60)
+  return `${hours}h ${mins}m`
+}
+
+const getInitials = (name: string) => {
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
 export default function LiveLocationMap() {
@@ -172,10 +268,11 @@ export default function LiveLocationMap() {
   const [isFirstLoad, setIsFirstLoad] = useState(true)
   const [isMobile, setIsMobile] = useState(true)
   const [lowAccuracyWarning, setLowAccuracyWarning] = useState(false)
-  const [shouldRecenter, setShouldRecenter] = useState(false) // Control recentering
-  const [shouldUpdateMap, setShouldUpdateMap] = useState(false) // Add this state
+  const [shouldRecenter, setShouldRecenter] = useState(false)
+  const [shouldUpdateMap, setShouldUpdateMap] = useState(false)
+  const [showSidebar, setShowSidebar] = useState(true)
+  const [customIcons, setCustomIcons] = useState<Record<string, any>>({})
   
-  // Routing state
   const [selectedUser, setSelectedUser] = useState<UserLocation | null>(null)
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
@@ -184,13 +281,54 @@ export default function LiveLocationMap() {
   const watchIdRef = useRef<number | null>(null)
   const updateIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const currentUserIdRef = useRef<string | null>(null)
   const routeUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  const currentUserId = session?.user?.id
+
+  // Filter out current user from server locations - ALWAYS
+  const otherUsersLocations = useMemo(() => {
+    if (!currentUserId) return locations
+    return locations.filter(loc => loc.participantId !== currentUserId)
+  }, [locations, currentUserId])
+
+  // Create a stable key for icons
+  const otherUsersKey = useMemo(() => {
+    return otherUsersLocations.map(l => l.id).sort().join(',')
+  }, [otherUsersLocations])
 
   // Load Leaflet CSS and fix icons
   useEffect(() => {
     if (typeof window !== "undefined") {
       setIsMobile(isMobileDevice())
+      
+      if (!document.getElementById("custom-marker-styles")) {
+        const style = document.createElement("style")
+        style.id = "custom-marker-styles"
+        style.textContent = `
+          .custom-marker-icon {
+            background: transparent !important;
+            border: none !important;
+          }
+          @keyframes pulse {
+            0%, 100% {
+              transform: scale(1);
+              opacity: 0.6;
+            }
+            50% {
+              transform: scale(1.15);
+              opacity: 0.3;
+            }
+          }
+          .leaflet-popup-content-wrapper {
+            border-radius: 12px !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+          }
+          .leaflet-popup-tip {
+            box-shadow: none !important;
+          }
+        `
+        document.head.appendChild(style)
+      }
       
       if (!document.getElementById("leaflet-css")) {
         const link = document.createElement("link")
@@ -210,7 +348,6 @@ export default function LiveLocationMap() {
         setLeafletLoaded(true)
       })
 
-      // Check existing permission state
       if (navigator.permissions) {
         navigator.permissions.query({ name: 'geolocation' }).then((result) => {
           setLocationPermission(result.state as 'prompt' | 'granted' | 'denied')
@@ -222,12 +359,16 @@ export default function LiveLocationMap() {
     }
   }, [])
 
-  // Store current user ID
+  // Create custom icons
   useEffect(() => {
-    if (session?.user?.id) {
-      currentUserIdRef.current = session.user.id
-    }
-  }, [session])
+    if (!leafletLoaded || otherUsersLocations.length === 0) return
+    
+    const icons: Record<string, any> = {}
+    otherUsersLocations.forEach(loc => {
+      icons[loc.id] = createCustomIcon(getInitials(loc.participantName), loc.avatarUrl, false)
+    })
+    setCustomIcons(icons)
+  }, [leafletLoaded, otherUsersKey])
 
   // Fetch route from OSRM
   const fetchRoute = useCallback(async (
@@ -237,7 +378,6 @@ export default function LiveLocationMap() {
     toLng: number
   ): Promise<RouteInfo | null> => {
     try {
-      // OSRM expects coordinates as lng,lat
       const url = `https://router.project-osrm.org/route/v1/foot/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson&steps=true`
       
       const response = await fetch(url)
@@ -248,10 +388,9 @@ export default function LiveLocationMap() {
       
       const route = data.routes[0]
       const coordinates: [number, number][] = route.geometry.coordinates.map(
-        (coord: [number, number]) => [coord[1], coord[0]] // Convert to [lat, lng] for Leaflet
+        (coord: [number, number]) => [coord[1], coord[0]]
       )
       
-      // Extract steps with instructions
       const steps: RouteStep[] = []
       if (route.legs && route.legs[0] && route.legs[0].steps) {
         route.legs[0].steps.forEach((step: any) => {
@@ -266,19 +405,14 @@ export default function LiveLocationMap() {
         })
       }
       
-      return {
-        coordinates,
-        distance: route.distance,
-        duration: route.duration,
-        steps
-      }
+      return { coordinates, distance: route.distance, duration: route.duration, steps }
     } catch (err) {
       console.error("Failed to fetch route:", err)
       return null
     }
   }, [])
 
-  // Start navigation to a user
+  // Start navigation
   const startNavigation = useCallback(async (targetUser: UserLocation) => {
     if (!myLocation) {
       setError("Please start sharing your location first to navigate")
@@ -290,33 +424,30 @@ export default function LiveLocationMap() {
     setShowDirections(true)
     
     const route = await fetchRoute(
-      myLocation.lat, 
-      myLocation.lng, 
-      targetUser.latitude, 
-      targetUser.longitude
+      myLocation.lat, myLocation.lng, 
+      targetUser.latitude, targetUser.longitude
     )
     
     setRouteInfo(route)
     setIsLoadingRoute(false)
     
     if (route) {
-      // Fit map to show the entire route
       const allLats = route.coordinates.map(c => c[0])
       const allLngs = route.coordinates.map(c => c[1])
       const centerLat = (Math.max(...allLats) + Math.min(...allLats)) / 2
       const centerLng = (Math.max(...allLngs) + Math.min(...allLngs)) / 2
       setMapCenter({ lat: centerLat, lng: centerLng })
       
-      const latSpread = Math.max(...allLats) - Math.min(...allLats)
-      const lngSpread = Math.max(...allLngs) - Math.min(...allLngs)
-      const maxSpread = Math.max(latSpread, lngSpread)
+      const maxSpread = Math.max(
+        Math.max(...allLats) - Math.min(...allLats),
+        Math.max(...allLngs) - Math.min(...allLngs)
+      )
       
       if (maxSpread > 0.1) setMapZoom(12)
       else if (maxSpread > 0.01) setMapZoom(14)
       else if (maxSpread > 0.001) setMapZoom(16)
       else setMapZoom(17)
       
-      // Trigger map update
       setShouldUpdateMap(true)
       setTimeout(() => setShouldUpdateMap(false), 100)
     }
@@ -333,21 +464,16 @@ export default function LiveLocationMap() {
     }
   }, [])
 
-  // Update route when my location changes (if navigating)
+  // Update route when navigating
   useEffect(() => {
-    if (!selectedUser || !myLocation || !isSharing) {
-      return
-    }
+    if (!selectedUser || !myLocation || !isSharing) return
     
-    // Initial route fetch when navigation starts
     const updateRoute = async () => {
-      const updatedTarget = locations.find(l => l.id === selectedUser.id)
+      const updatedTarget = otherUsersLocations.find(l => l.id === selectedUser.id)
       if (updatedTarget) {
         const route = await fetchRoute(
-          myLocation.lat,
-          myLocation.lng,
-          updatedTarget.latitude,
-          updatedTarget.longitude
+          myLocation.lat, myLocation.lng,
+          updatedTarget.latitude, updatedTarget.longitude
         )
         if (route) {
           setRouteInfo(route)
@@ -356,7 +482,6 @@ export default function LiveLocationMap() {
       }
     }
     
-    // Update route every 10 seconds while navigating
     routeUpdateIntervalRef.current = setInterval(updateRoute, 10000)
     
     return () => {
@@ -365,9 +490,9 @@ export default function LiveLocationMap() {
         routeUpdateIntervalRef.current = null
       }
     }
-  }, [selectedUser?.id, myLocation?.lat, myLocation?.lng, isSharing, locations, fetchRoute])
+  }, [selectedUser?.id, myLocation?.lat, myLocation?.lng, isSharing, fetchRoute, otherUsersLocations])
 
-  // Fetch locations from server
+  // Fetch locations
   const fetchLocations = useCallback(async () => {
     try {
       const response = await fetch("/api/location")
@@ -375,26 +500,23 @@ export default function LiveLocationMap() {
         const data = await response.json()
         const locs = data.locations || []
         
-        // Filter out current user from locations (they see themselves as blue marker)
-        const filteredLocs = locs.filter((loc: UserLocation) => 
-          loc.participantId !== currentUserIdRef.current
-        )
-        
-        setLocations(filteredLocs)
+        setLocations(locs)
         setUserSite(data.userSite || "Unknown")
         setIsAdmin(data.isAdmin || false)
         setCanShare(data.canShare !== false)
         setLastUpdate(new Date())
         
-        // Auto-center on first load based on real GPS data
+        // Filter out current user for initial map centering
+        const filteredLocs = currentUserId 
+          ? locs.filter((loc: UserLocation) => loc.participantId !== currentUserId)
+          : locs
+        
         if (isFirstLoad && filteredLocs.length > 0) {
           const avgLat = filteredLocs.reduce((sum: number, loc: UserLocation) => sum + loc.latitude, 0) / filteredLocs.length
           const avgLng = filteredLocs.reduce((sum: number, loc: UserLocation) => sum + loc.longitude, 0) / filteredLocs.length
           setMapCenter({ lat: avgLat, lng: avgLng })
           setMapZoom(filteredLocs.length === 1 ? 16 : 12)
           setIsFirstLoad(false)
-          
-          // Trigger map update for first load
           setShouldUpdateMap(true)
           setTimeout(() => setShouldUpdateMap(false), 100)
         }
@@ -404,45 +526,38 @@ export default function LiveLocationMap() {
     } finally {
       setIsLoading(false)
     }
-  }, [isFirstLoad])
+  }, [isFirstLoad, currentUserId])
 
-  // Poll for location updates
+  // Poll for updates
   useEffect(() => {
     fetchLocations()
     pollIntervalRef.current = setInterval(fetchLocations, 3000)
-    
-    return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-    }
+    return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current) }
   }, [fetchLocations])
 
-  // Update map center ONLY when shouldRecenter is true (walking mode) AND not navigating
+  // Recenter when walking
   useEffect(() => {
     if (myLocation && shouldRecenter && !selectedUser) {
       setMapCenter({ lat: myLocation.lat, lng: myLocation.lng })
       setShouldUpdateMap(true)
-      // Reset after short delay
       setTimeout(() => setShouldUpdateMap(false), 100)
     }
   }, [myLocation, shouldRecenter, selectedUser])
 
-  // Update location to server
+  // Update server location
   const updateServerLocation = useCallback(async (lat: number, lng: number) => {
     try {
-      const response = await fetch("/api/location", {
+      await fetch("/api/location", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ latitude: lat, longitude: lng })
       })
-      if (response.ok) {
-        console.log("✅ Location updated:", lat.toFixed(6), lng.toFixed(6))
-      }
     } catch (err) {
       console.error("Failed to update location:", err)
     }
   }, [])
 
-  // Try to get location with multiple strategies
+  // Get location with strategies
   const tryGetLocation = useCallback((
     attempt: number,
     onSuccess: (lat: number, lng: number, accuracy: number) => void,
@@ -456,40 +571,23 @@ export default function LiveLocationMap() {
     ]
 
     const options = strategies[Math.min(attempt, strategies.length - 1)]
-    console.log(`📍 Location attempt ${attempt + 1}:`, options)
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude, accuracy } = position.coords
-        console.log(`✅ Got location (accuracy: ${accuracy?.toFixed(0)}m):`, latitude, longitude)
-        
-        if (accuracy && accuracy > 500) {
-          console.warn(`⚠️ Low accuracy: ${accuracy}m - likely using IP-based location`)
-          setLowAccuracyWarning(true)
-        } else {
-          setLowAccuracyWarning(false)
-        }
-        
+        if (accuracy && accuracy > 500) setLowAccuracyWarning(true)
+        else setLowAccuracyWarning(false)
         onSuccess(latitude, longitude, accuracy || 0)
       },
       (err) => {
-        console.warn(`❌ Attempt ${attempt + 1} failed:`, err.code, err.message)
-        
         if (attempt < strategies.length - 1) {
           setTimeout(() => tryGetLocation(attempt + 1, onSuccess, onFail), 1000)
         } else {
-          let message = "Failed to get your location after multiple attempts."
+          let message = "Failed to get your location."
           switch (err.code) {
-            case 1:
-              message = "Location permission denied. Please enable location access in your browser settings."
-              setLocationPermission('denied')
-              break
-            case 2:
-              message = "Location unavailable. Please ensure GPS/Location is enabled on your device and try outdoors."
-              break
-            case 3:
-              message = "Location request timed out. Please move to an area with better GPS signal."
-              break
+            case 1: message = "Location permission denied."; setLocationPermission('denied'); break
+            case 2: message = "Location unavailable."; break
+            case 3: message = "Location request timed out."; break
           }
           onFail(message)
         }
@@ -498,10 +596,10 @@ export default function LiveLocationMap() {
     )
   }, [])
 
-  // Start sharing location
+  // Start sharing
   const startSharing = useCallback(() => {
     if (!navigator.geolocation) {
-      setError("Geolocation is not supported by your browser")
+      setError("Geolocation not supported")
       return
     }
 
@@ -509,8 +607,7 @@ export default function LiveLocationMap() {
     setIsGettingLocation(true)
     setLowAccuracyWarning(false)
 
-    tryGetLocation(
-      0,
+    tryGetLocation(0,
       (latitude, longitude, accuracy) => {
         setMyLocation({ lat: latitude, lng: longitude, accuracy })
         updateServerLocation(latitude, longitude)
@@ -521,27 +618,19 @@ export default function LiveLocationMap() {
         
         setMapCenter({ lat: latitude, lng: longitude })
         setMapZoom(17)
-        
-        // Trigger map update when starting to share
         setShouldUpdateMap(true)
         setTimeout(() => setShouldUpdateMap(false), 100)
         
-        if (isMobile) {
-          setShouldRecenter(true)
-        }
+        if (isMobile) setShouldRecenter(true)
 
         watchIdRef.current = navigator.geolocation.watchPosition(
           (pos) => {
             const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords
-            console.log(`📍 Watch update (accuracy: ${acc?.toFixed(0)}m):`, lat.toFixed(6), lng.toFixed(6))
             setMyLocation({ lat, lng, accuracy: acc })
             updateServerLocation(lat, lng)
-            
-            if (acc && acc > 500) {
-              setLowAccuracyWarning(true)
-            }
+            if (acc && acc > 500) setLowAccuracyWarning(true)
           },
-          (err) => console.warn("Watch error:", err.code),
+          () => {},
           { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
         )
 
@@ -564,7 +653,7 @@ export default function LiveLocationMap() {
     )
   }, [tryGetLocation, updateServerLocation, isMobile])
 
-  // Stop sharing location
+  // Stop sharing
   const stopSharing = useCallback(async () => {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current)
@@ -581,14 +670,9 @@ export default function LiveLocationMap() {
     setLowAccuracyWarning(false)
     stopNavigation()
 
-    try {
-      await fetch("/api/location", { method: "DELETE" })
-    } catch (err) {
-      console.error("Failed to stop sharing:", err)
-    }
+    try { await fetch("/api/location", { method: "DELETE" }) } catch {}
   }, [stopNavigation])
 
-  // Center map on my location (manual focus)
   const centerOnMe = useCallback(() => {
     if (myLocation) {
       setMapCenter({ lat: myLocation.lat, lng: myLocation.lng })
@@ -598,12 +682,9 @@ export default function LiveLocationMap() {
     }
   }, [myLocation])
 
-  // Toggle walking recenter mode
   const toggleRecenter = useCallback(() => {
     const newValue = !shouldRecenter
     setShouldRecenter(newValue)
-    
-    // When enabling, center immediately and trigger update
     if (newValue && myLocation) {
       setMapCenter({ lat: myLocation.lat, lng: myLocation.lng })
       setMapZoom(17)
@@ -612,36 +693,32 @@ export default function LiveLocationMap() {
     }
   }, [shouldRecenter, myLocation])
 
-  // Center on all participants (manual)
   const centerOnAll = useCallback(() => {
-    const allLocs: { latitude: number; longitude: number }[] = myLocation 
-      ? [...locations.map(l => ({ latitude: l.latitude, longitude: l.longitude })), { latitude: myLocation.lat, longitude: myLocation.lng }]
-      : locations.map(l => ({ latitude: l.latitude, longitude: l.longitude }))
+    const allLocs = myLocation 
+      ? [...otherUsersLocations.map(l => ({ lat: l.latitude, lng: l.longitude })), { lat: myLocation.lat, lng: myLocation.lng }]
+      : otherUsersLocations.map(l => ({ lat: l.latitude, lng: l.longitude }))
     
     if (allLocs.length > 0) {
-      const avgLat = allLocs.reduce((sum, loc) => sum + loc.latitude, 0) / allLocs.length
-      const avgLng = allLocs.reduce((sum, loc) => sum + loc.longitude, 0) / allLocs.length
+      const avgLat = allLocs.reduce((sum, loc) => sum + loc.lat, 0) / allLocs.length
+      const avgLng = allLocs.reduce((sum, loc) => sum + loc.lng, 0) / allLocs.length
       setMapCenter({ lat: avgLat, lng: avgLng })
       
-      if (allLocs.length === 1) {
-        setMapZoom(16)
-      } else {
-        const lats = allLocs.map(l => l.latitude)
-        const lngs = allLocs.map(l => l.longitude)
-        const spread = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lngs) - Math.min(...lngs))
-        
-        if (spread > 1) setMapZoom(8)
-        else if (spread > 0.1) setMapZoom(12)
-        else if (spread > 0.01) setMapZoom(14)
-        else setMapZoom(16)
-      }
+      const spread = Math.max(
+        Math.max(...allLocs.map(l => l.lat)) - Math.min(...allLocs.map(l => l.lat)),
+        Math.max(...allLocs.map(l => l.lng)) - Math.min(...allLocs.map(l => l.lng))
+      )
+      
+      if (allLocs.length === 1) setMapZoom(16)
+      else if (spread > 1) setMapZoom(8)
+      else if (spread > 0.1) setMapZoom(12)
+      else if (spread > 0.01) setMapZoom(14)
+      else setMapZoom(16)
       
       setShouldUpdateMap(true)
       setTimeout(() => setShouldUpdateMap(false), 100)
     }
-  }, [myLocation, locations])
+  }, [myLocation, otherUsersLocations])
 
-  // Center on a specific participant (manual focus)
   const centerOnUser = useCallback((loc: UserLocation) => {
     setMapCenter({ lat: loc.latitude, lng: loc.longitude })
     setMapZoom(18)
@@ -649,7 +726,7 @@ export default function LiveLocationMap() {
     setTimeout(() => setShouldUpdateMap(false), 100)
   }, [])
 
-  // Cleanup on unmount
+  // Cleanup
   useEffect(() => {
     return () => {
       if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
@@ -659,10 +736,23 @@ export default function LiveLocationMap() {
     }
   }, [])
 
+  // Memoize my icon
+  const myIcon = useMemo(() => {
+    if (!leafletLoaded || !myLocation) return null
+    return createCustomIcon(
+      session?.user?.name ? getInitials(session.user.name) : 'ME', 
+      session?.user?.image || undefined,
+      true
+    )
+  }, [leafletLoaded, myLocation, session?.user?.name, session?.user?.image])
+
+  // Count active users: other users + me (only if sharing)
+  const totalActiveUsers = otherUsersLocations.length + (isSharing ? 1 : 0)
+
   if (!leafletLoaded || isLoading) {
     return (
       <Card className="shadow-lg">
-        <CardContent className="flex items-center justify-center h-[400px]">
+        <CardContent className="flex items-center justify-center h-[500px]">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Loading map...</p>
@@ -673,27 +763,27 @@ export default function LiveLocationMap() {
   }
 
   return (
-    <Card className="shadow-lg hover:shadow-xl transition-shadow">
-      <CardHeader>
+    <Card className="shadow-lg overflow-hidden">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <div className="h-10 w-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/20 flex items-center justify-center">
-              <Navigation className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <Navigation className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <CardTitle>Live Location Map</CardTitle>
-              <CardDescription>
-                {isAdmin ? "All sites" : `${userSite} participants`}
+              <CardTitle className="text-lg">Live Location</CardTitle>
+              <CardDescription className="text-xs">
+                {isAdmin ? "All sites" : userSite}
               </CardDescription>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              {locations.length} online
+            <Badge variant="outline" className="text-xs">
+              <Users className="h-3 w-3 mr-1" />
+              {totalActiveUsers}
             </Badge>
             {lastUpdate && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs hidden sm:flex">
                 <RefreshCw className="h-3 w-3 mr-1" />
                 {lastUpdate.toLocaleTimeString()}
               </Badge>
@@ -701,419 +791,368 @@ export default function LiveLocationMap() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Error with retry */}
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <span className="flex-1">{error}</span>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={startSharing}
-                disabled={isGettingLocation}
-              >
-                <RefreshCw className="h-3 w-3 mr-1" />
-                Retry
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
+      
+      <CardContent className="p-0">
+        {/* Alerts */}
+        <div className="px-4 space-y-2">
+          {error && (
+            <Alert variant="destructive" className="py-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-sm flex items-center justify-between">
+                <span className="truncate flex-1">{error}</span>
+                <Button variant="outline" size="sm" onClick={startSharing} disabled={isGettingLocation} className="h-7 ml-2 flex-shrink-0">
+                  <RefreshCw className="h-3 w-3" />
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {/* Low accuracy warning for desktop/laptop */}
-        {lowAccuracyWarning && isSharing && (
-          <Alert>
-            <Monitor className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Low accuracy detected.</strong> Desktop/laptop browsers often use IP-based location which can be inaccurate. 
-              For precise location, please use a mobile device with GPS enabled.
-              {myLocation?.accuracy && (
-                <span className="text-xs ml-1">(Accuracy: ~{Math.round(myLocation.accuracy)}m)</span>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
+          {lowAccuracyWarning && isSharing && (
+            <Alert className="py-2">
+              <Monitor className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                Low accuracy detected. Use mobile for better GPS.
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {/* Navigation Panel - Shows when navigating to someone */}
+          {locationPermission === 'denied' && canShare && !error && (
+            <Alert className="py-2">
+              <WifiOff className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                Location blocked. Enable in browser settings.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+
+        {/* Navigation Panel */}
         {selectedUser && (
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Route className="h-5 w-5 text-blue-600" />
-                <span className="font-medium text-blue-800 dark:text-blue-200">
-                  Navigating to {selectedUser.participantName}
+          <div className="mx-4 mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <Route className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                <span className="text-sm font-medium text-blue-800 dark:text-blue-200 truncate">
+                  To {selectedUser.participantName}
                 </span>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={stopNavigation}
-                className="text-blue-600 hover:text-blue-800"
-              >
+              <Button variant="ghost" size="sm" onClick={stopNavigation} className="h-7 w-7 p-0 flex-shrink-0">
                 <X className="h-4 w-4" />
               </Button>
             </div>
             
             {isLoadingRoute ? (
-              <div className="flex items-center gap-2 text-sm text-blue-600">
+              <div className="flex items-center gap-2 text-sm text-blue-600 mt-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Calculating route...
+                Calculating...
               </div>
             ) : routeInfo ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-4 text-sm">
-                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                    📏 {formatDistance(routeInfo.distance)}
-                  </Badge>
-                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-                    ⏱️ {formatDuration(routeInfo.duration)}
-                  </Badge>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setShowDirections(!showDirections)}
-                    className="text-xs"
-                  >
-                    {showDirections ? "Hide" : "Show"} Directions
-                  </Button>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 border-blue-300">
+                  {formatDistance(routeInfo.distance)}
+                </Badge>
+                <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 border-blue-300">
+                  {formatDuration(routeInfo.duration)}
+                </Badge>
+                <Button variant="ghost" size="sm" onClick={() => setShowDirections(!showDirections)} className="h-6 text-xs ml-auto">
+                  {showDirections ? "Hide" : "Steps"}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-xs text-red-600 mt-2">Route failed</p>
+            )}
+            
+            {showDirections && routeInfo && routeInfo.steps.length > 0 && (
+              <ScrollArea className="h-24 mt-2">
+                <div className="space-y-1">
+                  {routeInfo.steps.map((step, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-1.5 bg-white dark:bg-gray-800 rounded text-xs">
+                      <ChevronRight className="h-3 w-3 text-blue-600 flex-shrink-0" />
+                      <span className="flex-1 truncate">{step.instruction}</span>
+                      <span className="text-muted-foreground flex-shrink-0">{formatDistance(step.distance)}</span>
+                    </div>
+                  ))}
                 </div>
-                
-                {/* Turn-by-turn directions */}
-                {showDirections && routeInfo.steps.length > 0 && (
-                  <div className="mt-2 max-h-[150px] overflow-y-auto space-y-1">
-                    {routeInfo.steps.map((step, idx) => (
-                      <div 
-                        key={idx} 
-                        className="flex items-start gap-2 p-2 bg-white dark:bg-gray-800 rounded text-sm"
-                      >
-                        <div className="flex-shrink-0 mt-0.5">
-                          {getManeuverIcon(step.maneuver)}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-gray-800 dark:text-gray-200">{step.instruction}</p>
-                          <p className="text-xs text-gray-500">
-                            {formatDistance(step.distance)} • {formatDuration(step.duration)}
-                          </p>
-                        </div>
+              </ScrollArea>
+            )}
+          </div>
+        )}
+
+        {/* Share Controls */}
+        <div className="px-4 py-3">
+          {canShare ? (
+            <div className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${isSharing ? 'bg-green-500' : 'bg-muted'}`}>
+                  <MapPin className={`h-4 w-4 ${isSharing ? 'text-white' : 'text-muted-foreground'}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate">
+                    {isGettingLocation ? "Getting location..." : isSharing ? "Sharing" : "Share location"}
+                  </p>
+                  {isSharing && myLocation && (
+                    <p className="text-xs text-muted-foreground font-mono truncate">
+                      {myLocation.lat.toFixed(4)}, {myLocation.lng.toFixed(4)}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {isSharing && myLocation && (
+                  <>
+                    <Button variant={shouldRecenter ? "default" : "ghost"} size="sm" onClick={toggleRecenter} className="h-8 w-8 p-0">
+                      <Navigation className={`h-4 w-4 ${shouldRecenter ? "" : "text-muted-foreground"}`} />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={centerOnMe} className="h-8 w-8 p-0">
+                      <Locate className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+                <Button
+                  variant={isSharing ? "destructive" : "default"}
+                  size="sm"
+                  onClick={isSharing ? stopSharing : startSharing}
+                  disabled={isGettingLocation}
+                  className="h-8 px-3"
+                >
+                  {isGettingLocation ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isSharing ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
+              <Eye className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">View only</span>
+            </div>
+          )}
+        </div>
+
+        {/* Main Layout: Sidebar + Map */}
+        <div className="flex flex-col lg:flex-row h-[400px] sm:h-[450px]">
+          {/* Sidebar - Users List */}
+          <div className={`${showSidebar ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-60 xl:w-64 border-t lg:border-t-0 lg:border-r bg-muted/20 max-h-[200px] lg:max-h-none`}>
+            <div className="flex items-center justify-between px-3 py-2 border-b">
+              <span className="text-sm font-medium">Active Users</span>
+              <Button variant="ghost" size="sm" onClick={centerOnAll} className="h-7 w-7 p-0">
+                <Users className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <ScrollArea className="flex-1">
+              <div className="p-2 space-y-1">
+                {/* My Location - Only show when actively sharing */}
+                {isSharing && myLocation && (
+                  <>
+                    <div 
+                      className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                      onClick={centerOnMe}
+                    >
+                      <div className="relative flex-shrink-0">
+                        <Avatar className="h-9 w-9 border-2 border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800">
+                          <AvatarImage src={session?.user?.image || undefined} />
+                          <AvatarFallback className="bg-blue-500 text-white text-xs font-bold">
+                            {session?.user?.name ? getInitials(session.user.name) : 'ME'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-white dark:border-gray-900" />
                       </div>
-                    ))}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">You</p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400">Sharing</p>
+                      </div>
+                    </div>
+                    {otherUsersLocations.length > 0 && <Separator className="my-2" />}
+                  </>
+                )}
+                
+                {/* Other Users - Already filtered */}
+                {otherUsersLocations.map((loc) => (
+                  <div 
+                    key={loc.id}
+                    className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                      selectedUser?.id === loc.id 
+                        ? 'bg-blue-100 dark:bg-blue-900/30 ring-1 ring-blue-300' 
+                        : 'hover:bg-muted/50'
+                    }`}
+                    onClick={() => centerOnUser(loc)}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <Avatar className="h-9 w-9 border-2 border-red-400 ring-2 ring-red-100 dark:ring-red-900/30">
+                        <AvatarImage src={loc.avatarUrl} />
+                        <AvatarFallback className="bg-red-500 text-white text-xs font-bold">
+                          {getInitials(loc.participantName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-white dark:border-gray-900" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{loc.participantName}</p>
+                      <p className="text-xs text-muted-foreground truncate">{loc.siteName}</p>
+                    </div>
+                    {myLocation && (
+                      <Button 
+                        variant={selectedUser?.id === loc.id ? "default" : "ghost"}
+                        size="sm" 
+                        className="h-7 w-7 p-0 flex-shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          selectedUser?.id === loc.id ? stopNavigation() : startNavigation(loc)
+                        }}
+                      >
+                        <Route className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                
+                {/* Empty states */}
+                {!isSharing && otherUsersLocations.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No active users</p>
+                    <p className="text-xs mt-1">Share your location to appear</p>
+                  </div>
+                )}
+
+                {isSharing && otherUsersLocations.length === 0 && (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p className="text-xs">No other users online</p>
                   </div>
                 )}
               </div>
-            ) : (
-              <p className="text-sm text-red-600">Could not calculate route. Try again.</p>
-            )}
+            </ScrollArea>
           </div>
-        )}
 
-        {/* Share Location Toggle */}
-        {canShare ? (
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <div className="flex items-center gap-2">
-              <MapPin className={`h-5 w-5 ${isSharing ? "text-green-500 animate-pulse" : "text-muted-foreground"}`} />
-              <div>
-                <span className="text-sm font-medium">
-                  {isGettingLocation 
-                    ? "Getting your location..." 
-                    : isSharing 
-                      ? "Sharing your location" 
-                      : "Share your location"}
-                </span>
-                {isSharing && myLocation && (
-                  <p className="text-xs text-green-600 font-mono">
-                    📍 {myLocation.lat.toFixed(6)}, {myLocation.lng.toFixed(6)}
-                    {myLocation.accuracy && (
-                      <span className="text-gray-500 ml-1">(±{Math.round(myLocation.accuracy)}m)</span>
-                    )}
-                  </p>
-                )}
-                {isGettingLocation && (
-                  <p className="text-xs text-muted-foreground">
-                    Please wait, trying to get GPS...
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {isSharing && myLocation && (
-                <>
-                  <Button 
-                    variant={shouldRecenter ? "default" : "outline"} 
-                    size="sm" 
-                    onClick={toggleRecenter} 
-                    title={shouldRecenter ? "Auto-follow ON" : "Auto-follow OFF"}
-                    className="text-xs"
-                  >
-                    <Navigation className={`h-4 w-4 ${shouldRecenter ? "animate-pulse" : ""}`} />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={centerOnMe} title="Center on me">
-                    <Locate className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
-              <Button
-                variant={isSharing ? "destructive" : "default"}
-                size="sm"
-                onClick={isSharing ? stopSharing : startSharing}
-                disabled={isGettingLocation}
-              >
-                {isGettingLocation ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    Wait...
-                  </>
-                ) : isSharing ? (
-                  <>
-                    <EyeOff className="h-4 w-4 mr-1" />
-                    Stop
-                  </>
-                ) : (
-                  <>
-                    <Eye className="h-4 w-4 mr-1" />
-                    Start
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center p-3 bg-muted/50 rounded-lg">
-            <Eye className="h-5 w-5 text-muted-foreground mr-2" />
-            <span className="text-sm text-muted-foreground">
-              {isAdmin ? "Admin view - location sharing disabled" : "View only mode"}
-            </span>
-          </div>
-        )}
-
-        {/* Permission denied warning */}
-        {locationPermission === 'denied' && canShare && !error && (
-          <Alert>
-            <WifiOff className="h-4 w-4" />
-            <AlertDescription>
-              Location access is blocked. Please enable location in your browser settings, then refresh this page.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Current location status */}
-        <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg text-xs">
-          <div className="flex items-center gap-2">
-            <Locate className="h-3 w-3 text-muted-foreground" />
-            <span className="text-muted-foreground font-mono">
-              {myLocation 
-                ? `Your GPS: ${myLocation.lat.toFixed(6)}, ${myLocation.lng.toFixed(6)}`
-                : `Map center: ${mapCenter.lat.toFixed(6)}, ${mapCenter.lng.toFixed(6)}`
-              }
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {isSharing && (
-              <>
-                <Badge className="text-xs bg-green-500 text-white">
-                  <MapPin className="h-3 w-3 mr-1" />
-                  LIVE
-                </Badge>
-                {shouldRecenter && (
-                  <Badge variant="outline" className="text-xs">
-                    <Navigation className="h-3 w-3 mr-1" />
-                    Follow
-                  </Badge>
-                )}
-              </>
-            )}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-6 px-2"
-              onClick={centerOnAll}
-              title="Center on all"
+          {/* Map */}
+          <div className="flex-1 relative min-h-[250px]">
+            {/* <Button
+              variant="secondary"
+              size="sm"
+              className="absolute top-2 left-2 z-[1000] lg:hidden h-8 shadow-md"
+              onClick={() => setShowSidebar(!showSidebar)}
             >
-              <Users className="h-3 w-3" />
-            </Button>
-            <Badge variant="outline" className="text-xs">Zoom: {mapZoom}</Badge>
-          </div>
-        </div>
+              <Users className="h-4 w-4 mr-1" />
+              {totalActiveUsers}
+            </Button> */}
 
-        {/* Map Container */}
-        <div className="h-[400px] rounded-lg overflow-hidden border">
-          <MapContainer
-            center={[mapCenter.lat, mapCenter.lng]}
-            zoom={mapZoom}
-            className="h-full w-full z-0"
-            scrollWheelZoom
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+            <MapContainer
+              center={[mapCenter.lat, mapCenter.lng]}
+              zoom={mapZoom}
+              className="h-full w-full"
+              scrollWheelZoom
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
 
-            {/* Dynamic map center update - only when triggered */}
-            {MapCenterUpdater && (
               <MapCenterUpdater 
                 center={[mapCenter.lat, mapCenter.lng]} 
                 zoom={mapZoom} 
                 shouldUpdate={shouldUpdateMap}
               />
-            )}
-            
-            {/* Route line */}
-            {routeInfo && routeInfo.coordinates.length > 0 && (
-              <Polyline
-                positions={routeInfo.coordinates}
-                pathOptions={{
-                  color: "#3b82f6",
-                  weight: 5,
-                  opacity: 0.8,
-                  dashArray: "10, 10"
-                }}
-              />
-            )}
-            
-            {/* My location with blue circle */}
-            {myLocation && (
-              <>
-                <Circle
-                  center={[myLocation.lat, myLocation.lng]}
-                  radius={myLocation.accuracy ? Math.min(myLocation.accuracy, 100) : 30}
-                  pathOptions={{ 
-                    color: "#3b82f6", 
-                    fillColor: "#3b82f6", 
-                    fillOpacity: 0.3,
-                    weight: 3
+              
+              {/* Route line */}
+              {routeInfo && routeInfo.coordinates.length > 1 && (
+                <Polyline
+                  positions={routeInfo.coordinates}
+                  pathOptions={{
+                    color: "#3b82f6",
+                    weight: 5,
+                    opacity: 0.8,
+                    dashArray: "10, 10"
                   }}
                 />
-                <Marker position={[myLocation.lat, myLocation.lng]}>
-                  <Popup>
-                    <div className="text-center font-medium">
-                      <p className="text-blue-600">📍 You are here</p>
-                      <p className="text-xs text-gray-500 mt-1 font-mono">
-                        {myLocation.lat.toFixed(6)}, {myLocation.lng.toFixed(6)}
-                      </p>
-                      {myLocation.accuracy && (
-                        <p className="text-xs text-gray-400">
-                          Accuracy: ±{Math.round(myLocation.accuracy)}m
-                        </p>
-                      )}
-                    </div>
-                  </Popup>
-                </Marker>
-              </>
-            )}
+              )}
+              
+              {/* My location - BLUE marker - Only when sharing */}
+              {isSharing && myLocation && (
+                <>
+                  <Circle
+                    center={[myLocation.lat, myLocation.lng]}
+                    radius={Math.min(myLocation.accuracy || 30, 100)}
+                    pathOptions={{ 
+                      color: "#3b82f6", 
+                      fillColor: "#3b82f6", 
+                      fillOpacity: 0.15,
+                      weight: 2
+                    }}
+                  />
+                  {myIcon && (
+                    <Marker position={[myLocation.lat, myLocation.lng]} icon={myIcon}>
+                      <Popup>
+                        <div className="text-center p-1">
+                          <div className="flex items-center justify-center mb-2">
+                            <Avatar className="h-12 w-12 border-2 border-blue-500">
+                              <AvatarImage src={session?.user?.image || undefined} />
+                              <AvatarFallback className="bg-blue-500 text-white font-bold">
+                                {session?.user?.name ? getInitials(session.user.name) : 'ME'}
+                              </AvatarFallback>
+                            </Avatar>
+                          </div>
+                          <p className="font-semibold text-blue-600">You</p>
+                          <p className="text-xs text-gray-500 font-mono mt-1">
+                            {myLocation.lat.toFixed(6)}, {myLocation.lng.toFixed(6)}
+                          </p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  )}
+                </>
+              )}
 
-            {/* Other participants (already filtered, no duplicates) */}
-            {locations.map((loc) => (
-              <Marker key={loc.id} position={[loc.latitude, loc.longitude]}>
-                <Popup>
-                  <div className="text-center min-w-[140px]">
-                    <p className="font-semibold text-sm">{loc.participantName}</p>
-                    {loc.teamName && (
-                      <p className="text-xs text-gray-500">{loc.teamName}</p>
-                    )}
-                    <p className="text-xs text-gray-500">{loc.siteName}</p>
-                    <p className="text-xs text-gray-400 mt-1 font-mono">
-                      📍 {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {new Date(loc.updatedAt).toLocaleTimeString()}
-                    </p>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
+              {/* Other users - RED markers */}
+              {otherUsersLocations.map((loc) => (
+                customIcons[loc.id] && (
+                  <Marker 
+                    key={loc.id} 
+                    position={[loc.latitude, loc.longitude]}
+                    icon={customIcons[loc.id]}
+                  >
+                    <Popup>
+                      <div className="text-center p-1 min-w-[140px]">
+                        <div className="flex items-center justify-center mb-2">
+                          <Avatar className="h-12 w-12 border-2 border-red-400">
+                            <AvatarImage src={loc.avatarUrl} />
+                            <AvatarFallback className="bg-red-500 text-white font-bold">
+                              {getInitials(loc.participantName)}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
+                        <p className="font-semibold text-sm">{loc.participantName}</p>
+                        {loc.teamName && <p className="text-xs text-gray-500">{loc.teamName}</p>}
+                        <p className="text-xs text-gray-500">{loc.siteName}</p>
+                        <p className="text-xs text-gray-400 mt-1 font-mono">
+                          {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)}
+                        </p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )
+              ))}
+            </MapContainer>
+          </div>
         </div>
 
-        {/* Participants List with Navigate button */}
-        {locations.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Nearby Participants</p>
-            <div className="grid gap-2 max-h-[200px] overflow-y-auto">
-              {locations.map((loc) => (
-                <div
-                  key={loc.id}
-                  className={`flex items-center justify-between p-2 rounded-lg transition-colors ${
-                    selectedUser?.id === loc.id 
-                      ? "bg-blue-100 dark:bg-blue-900/30 border border-blue-300" 
-                      : "bg-muted/30 hover:bg-muted/50"
-                  }`}
-                >
-                  <div 
-                    className="flex items-center gap-2 cursor-pointer flex-1"
-                    onClick={() => centerOnUser(loc)}
-                  >
-                    <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                      <span className="text-xs font-medium text-red-600">
-                        {loc.participantName.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{loc.participantName}</p>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {loc.latitude.toFixed(4)}, {loc.longitude.toFixed(4)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-muted-foreground mr-1">
-                      {new Date(loc.updatedAt).toLocaleTimeString()}
-                    </span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-7 w-7 p-0"
-                      onClick={() => centerOnUser(loc)}
-                      title="Focus"
-                    >
-                      <Locate className="h-3 w-3" />
-                    </Button>
-                    {myLocation && (
-                      <Button 
-                        variant={selectedUser?.id === loc.id ? "default" : "outline"}
-                        size="sm" 
-                        className="h-7 px-2"
-                        onClick={() => selectedUser?.id === loc.id ? stopNavigation() : startNavigation(loc)}
-                        title={selectedUser?.id === loc.id ? "Stop navigation" : "Navigate to"}
-                      >
-                        <Route className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Empty state when no one online */}
-        {locations.length === 0 && !myLocation && (
-          <div className="text-center py-4 text-muted-foreground">
-            <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No participants sharing location</p>
-            <p className="text-xs">Click &quot;Start&quot; to share yours!</p>
-          </div>
-        )}
-
-        {/* Legend */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
+        {/* Footer Legend */}
+        <div className="flex items-center justify-between px-4 py-2 border-t text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1">
-              <div className="h-3 w-3 rounded-full bg-blue-500" />
+            <div className="flex items-center gap-1.5">
+              <div className="h-3 w-3 rounded-full bg-blue-500 ring-2 ring-blue-200" />
               <span>You</span>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="h-3 w-3 rounded-full bg-red-500" />
+            <div className="flex items-center gap-1.5">
+              <div className="h-3 w-3 rounded-full bg-red-500 ring-2 ring-red-200" />
               <span>Others</span>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="h-3 w-1 bg-blue-500" style={{ borderRadius: 2 }} />
-              <span>Route</span>
-            </div>
           </div>
-          <span className="text-xs">
-            {!isMobile && "📱 Use mobile for better GPS • "}
-            Auto-updates every 3s
-          </span>
+          <span className="hidden sm:inline">Updates every 3s</span>
         </div>
       </CardContent>
     </Card>

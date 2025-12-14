@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Get locations for map
+// Get locations for map - EXCLUDE CURRENT USER
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -69,6 +69,7 @@ export async function GET(req: NextRequest) {
 
     const isAdmin = session.user.role === "ADMIN"
     const siteName = user?.participant?.siteName || null
+    const currentParticipantId = user?.participant?.id // Get current user's participant ID
 
     // Get locations updated in last 5 minutes (active users)
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
@@ -77,6 +78,8 @@ export async function GET(req: NextRequest) {
       where: {
         isActive: true,
         updatedAt: { gte: fiveMinutesAgo },
+        // EXCLUDE current user's location
+        ...(currentParticipantId ? { NOT: { participantId: currentParticipantId } } : {}),
         ...(isAdmin ? {} : siteName ? { siteName } : { siteName: "Unknown" })
       },
       include: {

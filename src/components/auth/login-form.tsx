@@ -63,11 +63,11 @@ export function LoginForm() {
   
   const watchRole = form.watch("role")
   
-  // Determine which credential fields to show
-  const showEmail = watchRole === "ADMIN" || watchRole === "PARTICIPANT" 
+  // ADMIN uses email only, PARTICIPANT uses both email and UID
+  const showEmail = true
   const showUID = watchRole === "PARTICIPANT"
+  const isEmailRequired = true
   const isUIDRequired = watchRole === "PARTICIPANT"
-  const isEmailRequired = watchRole === "ADMIN"
 
   const handleRoleChange = (role: Role) => {
     form.setValue("role", role)
