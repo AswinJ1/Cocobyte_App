@@ -40,15 +40,30 @@ const Popup = dynamic(
   { ssr: false }
 )
 
-// Component to update map center dynamically
+// Component to update map center dynamically - ONLY when explicitly triggered
 const MapCenterUpdater = dynamic(
   () => import("react-leaflet").then((mod) => {
     const { useMap } = mod
-    return function MapCenterUpdaterInner({ center, zoom }: { center: [number, number]; zoom: number }) {
+    return function MapCenterUpdaterInner({ center, zoom, shouldUpdate }: { center: [number, number]; zoom: number; shouldUpdate: boolean }) {
       const map = useMap()
+      const lastCenterRef = useRef<[number, number] | null>(null)
+      const lastZoomRef = useRef<number | null>(null)
+      
       useEffect(() => {
-        map.setView(center, zoom)
-      }, [map, center, zoom])
+        // Only update if shouldUpdate is true AND values actually changed
+        if (shouldUpdate) {
+          const centerChanged = !lastCenterRef.current || 
+            lastCenterRef.current[0] !== center[0] || 
+            lastCenterRef.current[1] !== center[1]
+          const zoomChanged = lastZoomRef.current !== zoom
+          
+          if (centerChanged || zoomChanged) {
+            map.setView(center, zoom)
+            lastCenterRef.current = center
+            lastZoomRef.current = zoom
+          }
+        }
+      }, [map, center, zoom, shouldUpdate])
       return null
     }
   }),
@@ -92,6 +107,7 @@ export default function AdminLiveMapPage() {
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>(DEFAULT_CENTER)
   const [mapZoom, setMapZoom] = useState(DEFAULT_CENTER.zoom)
   const [isFirstLoad, setIsFirstLoad] = useState(true)
+  const [shouldUpdateMap, setShouldUpdateMap] = useState(false) // Control map updates
   
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -136,13 +152,17 @@ export default function AdminLiveMapPage() {
         setLastUpdate(new Date())
         setError(null)
         
-        // Auto-center on first load if we have locations
+        // Auto-center on first load ONLY if we have locations
         if (isFirstLoad && locs.length > 0) {
           const avgLat = locs.reduce((sum: number, loc: UserLocation) => sum + loc.latitude, 0) / locs.length
           const avgLng = locs.reduce((sum: number, loc: UserLocation) => sum + loc.longitude, 0) / locs.length
           setMapCenter({ lat: avgLat, lng: avgLng })
           setMapZoom(locs.length === 1 ? 16 : 10)
+          setShouldUpdateMap(true)
           setIsFirstLoad(false)
+          
+          // Reset update flag after a short delay
+          setTimeout(() => setShouldUpdateMap(false), 100)
         }
       } else {
         setError("Failed to fetch locations")
@@ -181,7 +201,7 @@ export default function AdminLiveMapPage() {
     setFilteredLocations(filtered)
   }, [locations, selectedSite])
 
-  // Center on all filtered locations
+  // Center on all filtered locations (manual action)
   const centerOnAll = useCallback(() => {
     if (filteredLocations.length > 0) {
       const avgLat = filteredLocations.reduce((sum, loc) => sum + loc.latitude, 0) / filteredLocations.length
@@ -202,14 +222,44 @@ export default function AdminLiveMapPage() {
         else if (maxSpread > 0.1) setMapZoom(12)
         else setMapZoom(14)
       }
+      
+      // Trigger map update
+      setShouldUpdateMap(true)
+      setTimeout(() => setShouldUpdateMap(false), 100)
     }
   }, [filteredLocations])
 
-  // Center on specific user
-  const centerOnUser = (loc: UserLocation) => {
+  // Center on specific user (manual action)
+  const centerOnUser = useCallback((loc: UserLocation) => {
     setMapCenter({ lat: loc.latitude, lng: loc.longitude })
     setMapZoom(18)
-  }
+    setShouldUpdateMap(true)
+    setTimeout(() => setShouldUpdateMap(false), 100)
+  }, [])
+
+  // Handle site filter change with centering
+  const handleSiteChange = useCallback((site: string) => {
+    setSelectedSite(site)
+    
+    // Center on the selected site's users
+    setTimeout(() => {
+      let targetLocs: UserLocation[]
+      if (site === "All Sites") {
+        targetLocs = locations
+      } else {
+        targetLocs = locations.filter(l => l.siteName === site)
+      }
+      
+      if (targetLocs.length > 0) {
+        const avgLat = targetLocs.reduce((sum, loc) => sum + loc.latitude, 0) / targetLocs.length
+        const avgLng = targetLocs.reduce((sum, loc) => sum + loc.longitude, 0) / targetLocs.length
+        setMapCenter({ lat: avgLat, lng: avgLng })
+        setMapZoom(targetLocs.length === 1 ? 16 : 14)
+        setShouldUpdateMap(true)
+        setTimeout(() => setShouldUpdateMap(false), 100)
+      }
+    }, 0)
+  }, [locations])
 
   // Get site statistics
   const getSiteStats = () => {
@@ -255,7 +305,7 @@ export default function AdminLiveMapPage() {
                 Live Location Tracker
               </h1>
               <p className="text-muted-foreground mt-1">
-                Real-time participant locations (centered on actual GPS data)
+                Real-time participant locations (no auto-recentering)
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -277,10 +327,7 @@ export default function AdminLiveMapPage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <Card 
               className={`cursor-pointer transition-all ${selectedSite === "All Sites" ? "ring-2 ring-primary" : "hover:shadow-md"}`}
-              onClick={() => {
-                setSelectedSite("All Sites")
-                centerOnAll()
-              }}
+              onClick={() => handleSiteChange("All Sites")}
             >
               <CardContent className="p-4 text-center">
                 <Globe className="h-6 w-6 mx-auto mb-2 text-primary" />
@@ -293,16 +340,7 @@ export default function AdminLiveMapPage() {
               <Card 
                 key={site}
                 className={`cursor-pointer transition-all ${selectedSite === site ? "ring-2 ring-primary" : "hover:shadow-md"}`}
-                onClick={() => {
-                  setSelectedSite(site)
-                  const siteLocs = locations.filter(l => l.siteName === site)
-                  if (siteLocs.length > 0) {
-                    const avgLat = siteLocs.reduce((sum, loc) => sum + loc.latitude, 0) / siteLocs.length
-                    const avgLng = siteLocs.reduce((sum, loc) => sum + loc.longitude, 0) / siteLocs.length
-                    setMapCenter({ lat: avgLat, lng: avgLng })
-                    setMapZoom(siteLocs.length === 1 ? 16 : 14)
-                  }
-                }}
+                onClick={() => handleSiteChange(site)}
               >
                 <CardContent className="p-4 text-center">
                   <MapPin 
@@ -336,20 +374,7 @@ export default function AdminLiveMapPage() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Select value={selectedSite} onValueChange={(val) => {
-                    setSelectedSite(val)
-                    if (val === "All Sites") {
-                      centerOnAll()
-                    } else {
-                      const siteLocs = locations.filter(l => l.siteName === val)
-                      if (siteLocs.length > 0) {
-                        const avgLat = siteLocs.reduce((sum, loc) => sum + loc.latitude, 0) / siteLocs.length
-                        const avgLng = siteLocs.reduce((sum, loc) => sum + loc.longitude, 0) / siteLocs.length
-                        setMapCenter({ lat: avgLat, lng: avgLng })
-                        setMapZoom(siteLocs.length === 1 ? 16 : 14)
-                      }
-                    }
-                  }}>
+                  <Select value={selectedSite} onValueChange={handleSiteChange}>
                     <SelectTrigger className="w-[160px]">
                       <Filter className="h-4 w-4 mr-2" />
                       <SelectValue />
@@ -386,7 +411,7 @@ export default function AdminLiveMapPage() {
                 </Alert>
               )}
 
-              {/* Current Map Center Info - Shows REAL coordinates */}
+              {/* Current Map Center Info */}
               <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
                 <div className="flex items-center gap-2">
                   <Locate className="h-4 w-4 text-muted-foreground" />
@@ -418,8 +443,12 @@ export default function AdminLiveMapPage() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
                   
-                  {/* Dynamic map center update */}
-                  <MapCenterUpdater center={[mapCenter.lat, mapCenter.lng]} zoom={mapZoom} />
+                  {/* Dynamic map center update - only when explicitly triggered */}
+                  <MapCenterUpdater 
+                    center={[mapCenter.lat, mapCenter.lng]} 
+                    zoom={mapZoom} 
+                    shouldUpdate={shouldUpdateMap}
+                  />
                   
                   {filteredLocations.map((loc) => (
                     <Marker
@@ -483,7 +512,7 @@ export default function AdminLiveMapPage() {
                     ))}
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    Auto-refresh every 3 seconds
+                    Auto-refresh every 3s • Click Focus to center
                   </span>
                 </div>
               )}
@@ -495,7 +524,7 @@ export default function AdminLiveMapPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Active Participants</CardTitle>
-                <CardDescription>Click on a row to center the map on that participant&apos;s real GPS location</CardDescription>
+                <CardDescription>Click &quot;Focus&quot; to center the map on that participant</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
@@ -514,8 +543,7 @@ export default function AdminLiveMapPage() {
                       {filteredLocations.map((loc) => (
                         <tr 
                           key={loc.id} 
-                          className="border-b hover:bg-muted/50 cursor-pointer"
-                          onClick={() => centerOnUser(loc)}
+                          className="border-b hover:bg-muted/50"
                         >
                           <td className="p-2 font-medium">{loc.participantName}</td>
                           <td className="p-2 text-muted-foreground">{loc.teamName || "-"}</td>
@@ -538,12 +566,9 @@ export default function AdminLiveMapPage() {
                           </td>
                           <td className="p-2">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                centerOnUser(loc)
-                              }}
+                              onClick={() => centerOnUser(loc)}
                             >
                               <Locate className="h-4 w-4 mr-1" />
                               Focus
