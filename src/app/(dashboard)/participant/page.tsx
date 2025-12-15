@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import DashboardHeader from "@/components/dashboard-header"
 import LiveLocationMap from "@/components/live-location-map"
+import ArrivalDetailsPopup from "@/components/arrival-details-popup"
 import { 
   Loader2, 
   Wifi,
@@ -25,7 +26,11 @@ import {
   EyeOff,
   Map,
   DoorOpen,
-  Users
+  Users,
+  Plane,
+  Train,
+  Bus,
+  Car
 } from "lucide-react"
 
 interface ParticipantProfile {
@@ -49,7 +54,14 @@ interface ParticipantProfile {
     createdAt: string
     gender: "male" | "female"
     avatarUrl?: string
-    isCheckedIn?: boolean  // Changed from checkedIn to isCheckedIn
+    isCheckedIn?: boolean
+    // Arrival details
+    transportMode?: string
+    arrivalFrom?: string
+    arrivalTo?: string
+    expectedArrivalTime?: string
+    interestedInCarpool?: boolean
+    arrivalDetailsSubmitted?: boolean
   }
 }
 
@@ -81,6 +93,7 @@ export default function ParticipantDashboard() {
   const [profile, setProfile] = useState<ParticipantProfile | null>(null)
   const [showWifiPassword, setShowWifiPassword] = useState(false)
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [showArrivalPopup, setShowArrivalPopup] = useState(false)
 
   useEffect(() => {
     if (session?.user?.role !== "PARTICIPANT") {
@@ -90,13 +103,23 @@ export default function ParticipantDashboard() {
     fetchProfile()
   }, [session, router])
 
+  // Show arrival popup if not submitted yet
+  useEffect(() => {
+    if (profile && !profile.participant?.arrivalDetailsSubmitted) {
+      // Delay popup slightly for better UX
+      const timer = setTimeout(() => {
+        setShowArrivalPopup(true)
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [profile])
+
   const fetchProfile = async () => {
     try {
       const response = await fetch("/api/profile")
       if (response.ok) {
         const data = await response.json()
-        console.log("Profile data:", data) // Debug: Check what's being returned
-        console.log("Checked in status:", data?.participant?.checkedIn) // Debug: Check checkedIn value
+        console.log("Profile data:", data)
         setProfile(data)
       } else {
         setError("Failed to load profile data")
@@ -131,10 +154,18 @@ export default function ParticipantDashboard() {
   const getSiteMap = () => {
     const siteName = profile?.participant?.siteName
     if (!siteName || !SITE_MAPS[siteName]) {
-      // Default to Amritapuri if no site or invalid site
       return SITE_MAPS["Amritapuri"]
     }
     return SITE_MAPS[siteName]
+  }
+
+  const getTransportIcon = (mode: string) => {
+    switch (mode) {
+      case "flight": return <Plane className="h-4 w-4 text-blue-500" />
+      case "train": return <Train className="h-4 w-4 text-green-500" />
+      case "bus": return <Bus className="h-4 w-4 text-orange-500" />
+      default: return <Car className="h-4 w-4 text-purple-500" />
+    }
   }
 
   if (isLoading) {
@@ -154,6 +185,14 @@ export default function ParticipantDashboard() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <DashboardHeader />
+
+      {/* Arrival Details Popup */}
+      <ArrivalDetailsPopup
+        isOpen={showArrivalPopup}
+        onClose={() => setShowArrivalPopup(false)}
+        onSuccess={() => fetchProfile()}
+        siteName={profile?.participant?.siteName || "Amritapuri"}
+      />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Error Message */}
@@ -166,16 +205,89 @@ export default function ParticipantDashboard() {
         {/* Welcome Section */}
         <Card className="mb-8 shadow-lg border-none bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
           <CardContent className="p-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Welcome back, {profile?.participant?.name?.split(" ")[0] || "Participant"}! 👋
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
-                Here's your hostel information and essential details
-              </p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  Welcome back, {profile?.participant?.name?.split(" ")[0] || "Participant"}! 👋
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  Here's your hostel information and essential details
+                </p>
+              </div>
+              
+              {/* Arrival Details Quick View / Button */}
+              {profile?.participant?.arrivalDetailsSubmitted ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowArrivalPopup(true)}
+                  className="gap-2"
+                >
+                  {getTransportIcon(profile.participant.transportMode || "")}
+                  <span className="hidden sm:inline">View Travel Details</span>
+                  <span className="sm:hidden">Travel</span>
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => setShowArrivalPopup(true)}
+                  className="gap-2"
+                >
+                  <MapPin className="h-4 w-4" />
+                  <span className="hidden sm:inline">Add Arrival Details</span>
+                  <span className="sm:hidden">Arrival</span>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Arrival Details Card (if submitted) */}
+        {profile?.participant?.arrivalDetailsSubmitted && profile.participant.transportMode !== "other" && (
+          <Card className="mb-8 shadow-lg hover:shadow-xl transition-shadow border-l-4 border-l-primary">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                {getTransportIcon(profile.participant.transportMode || "")}
+                Your Travel Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">From</p>
+                  <p className="font-medium">{profile.participant.arrivalFrom}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">To</p>
+                  <p className="font-medium">{profile.participant.arrivalTo}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground mb-1">Arrival Time</p>
+                  <p className="font-medium">
+                    {profile.participant.expectedArrivalTime 
+                      ? new Date(profile.participant.expectedArrivalTime).toLocaleString()
+                      : "Not specified"
+                    }
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground mb-1">Carpool</p>
+                  <Badge variant={profile.participant.interestedInCarpool ? "default" : "outline"}>
+                    {profile.participant.interestedInCarpool ? "Interested" : "Not interested"}
+                  </Badge>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowArrivalPopup(true)}
+                className="mt-3 gap-1"
+              >
+                Edit details
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Hostel Information Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -469,11 +581,6 @@ export default function ParticipantDashboard() {
             </CardContent>
           </Card>
         )}
-
-        {/* Live Location Map */}
-        <div className="mb-8">
-          <LiveLocationMap />
-        </div>
 
         {/* Dynamic Campus Map based on Site */}
         <Card className="shadow-lg">

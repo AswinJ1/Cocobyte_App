@@ -58,6 +58,12 @@ model Participant {
   checkInTime    DateTime?
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   location     UserLocation?
+  transportMode       TransportMode?   // "flight", "train", "bus", "other"
+  arrivalFrom         String?
+  arrivalTo           String?
+  expectedArrivalTime DateTime?
+  interestedInCarpool Boolean?  @default(false)
+  arrivalDetailsSubmitted Boolean? @default(false)
 }
 
 model LoginLog {
@@ -141,4 +147,10 @@ enum NotificationPriority {
   NORMAL
   HIGH
   URGENT
+}
+enum TransportMode {
+  FLIGHT
+  TRAIN
+  BUS
+  OTHER
 }

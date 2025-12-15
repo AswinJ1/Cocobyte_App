@@ -38,7 +38,9 @@ import {
   CheckLineIcon,
   CheckIcon,
   MapPin,
-  Map
+  Map,
+  CalendarArrowUp,
+  LucideCalendarSearch
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -131,18 +133,24 @@ const navigation: NavigationItem[] = [
     icon: <CheckLineIcon className="w-5 h-5" />,
     roles: ["PARTICIPANT"]
   },
+     {
+    name: "Arrival List",
+    href: "/participant/timings",
+    icon: <LucideCalendarSearch className="w-5 h-5" />,
+    roles: ["PARTICIPANT"]
+  },
   {
     name: "Profile",
     href: "/admin/profile",
     icon: <User className="w-5 h-5" />,
     roles: ["ADMIN"]
   },
-   {
-    name: "Realtime map",
-    href: "/admin/live-map",
-    icon: <Map className="w-5 h-5" />,
-    roles: ["ADMIN"]
-  },
+  //  {
+  //   name: "Realtime map",
+  //   href: "/admin/live-map",
+  //   icon: <Map className="w-5 h-5" />,
+  //   roles: ["ADMIN"]
+  // },
   {
     name: "Notifications",
     icon: <Bell className="w-5 h-5" />,
