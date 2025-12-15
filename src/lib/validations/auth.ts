@@ -11,7 +11,6 @@ export const adminLoginSchema = z.object({
 
 export const participantLoginSchema = z.object({
   uid: z.string().min(1, "UID is required"),
-  email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 })
 
@@ -22,23 +21,38 @@ export const studentLoginSchema = z.object({
 
 // Generic login schema
 export const loginSchema = z.object({
-  email: z.string().email().optional(),
-  uid: z.string().optional(),
-  password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum(["ADMIN", "PARTICIPANT"]),
-}).refine((data) => {
-  // ADMIN: Requires email
-  if (data.role === "ADMIN" && !data.email) {
-    return false
+  email: z.string().optional(),
+  uid: z.string().optional(),
+  password: z.string().min(1, "Password is required"),
+}).superRefine((data, ctx) => {
+  // ADMIN requires email only
+  if (data.role === "ADMIN") {
+    if (!data.email || data.email.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Email is required for Admin",
+        path: ["email"],
+      })
+    }
   }
-  // participant, HOSTEL, TEAM_LEAD, SECURITY: Requires UID (but should also have email)
-  if ((data.role === "PARTICIPANT") && !data.uid) {
-    return false
+  // PARTICIPANT requires both email AND UID
+  if (data.role === "PARTICIPANT") {
+    if (!data.email || data.email.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Email is required for Participant",
+        path: ["email"],
+      })
+    }
+    if (!data.uid || data.uid.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "UID is required for Participant",
+        path: ["uid"],
+      })
+    }
   }
-  return true
-}, {
-  message: "Please provide the required credentials for your role",
-  path: ["email"],
 })
 
 

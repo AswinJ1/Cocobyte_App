@@ -57,6 +57,13 @@ model Participant {
   isCheckedIn    Boolean  @default(false)
   checkInTime    DateTime?
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location     UserLocation?
+  transportMode       TransportMode?   // "flight", "train", "bus", "other"
+  arrivalFrom         String?
+  arrivalTo           String?
+  expectedArrivalTime DateTime?
+  interestedInCarpool Boolean?  @default(false)
+  arrivalDetailsSubmitted Boolean? @default(false)
 }
 
 model LoginLog {
@@ -106,6 +113,20 @@ model Notification {
   @@index([targetRole])
 }
 
+model UserLocation {
+  id           String   @id @default(cuid())
+  participantId String  @unique
+  participant  Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  latitude     Float
+  longitude    Float
+  siteName     String
+  updatedAt    DateTime @updatedAt
+  isActive     Boolean  @default(true)
+
+  @@index([siteName])
+  @@index([isActive])
+}
+
 enum Role {
   ADMIN
   PARTICIPANT
@@ -126,4 +147,10 @@ enum NotificationPriority {
   NORMAL
   HIGH
   URGENT
+}
+enum TransportMode {
+  FLIGHT
+  TRAIN
+  BUS
+  OTHER
 }

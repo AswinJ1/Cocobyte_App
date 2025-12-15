@@ -78,11 +78,28 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials, req) {
         try {
+          // Validate credentials exist
+          if (!credentials) {
+            console.error("No credentials provided")
+            return null
+          }
+
           const { email, uid, password, role } = credentials as {
             email?: string
             uid?: string
             password: string
-            role: Role
+            role?: Role
+          }
+
+          // Validate required fields
+          if (!password) {
+            console.error("Password is required")
+            return null
+          }
+
+          if (!role || !["ADMIN", "PARTICIPANT"].includes(role)) {
+            console.error("Invalid role:", role)
+            return null
           }
 
           // Get IP and User Agent from request
@@ -98,18 +115,25 @@ export const authOptions: NextAuthOptions = {
           let user = null
 
           if (role === "ADMIN") {
-            if (!email) throw new Error("Email is required")
+            if (!email) {
+              console.error("Email is required for ADMIN")
+              return null
+            }
             
             user = await prisma.user.findUnique({
               where: { email },
               include: {
-                admin: true,  // Include admin to get isSuperAdmin
+                admin: true,
                 participant: true,
               },
             })
           } else if (role === "PARTICIPANT") {
-            if (!uid) throw new Error("UID is required")
+            if (!email || !uid) {
+              console.error("Email and UID are required for PARTICIPANT")
+              return null
+            }
             
+            // Find participant by UID
             user = await prisma.user.findUnique({
               where: { uid },
               include: {
@@ -117,9 +141,27 @@ export const authOptions: NextAuthOptions = {
                 participant: true,
               },
             })
+            
+            // Verify email matches
+            if (user && user.email !== email) {
+              console.error("Email mismatch for participant")
+              await prisma.loginLog.create({
+                data: {
+                  email: email,
+                  ipAddress,
+                  userAgent,
+                  deviceType,
+                  os,
+                  browser,
+                  isSuccess: false
+                }
+              })
+              return null
+            }
           }
 
           if (!user) {
+            console.error("User not found:", email || uid)
             // Log failed attempt
             await prisma.loginLog.create({
               data: {
@@ -132,11 +174,12 @@ export const authOptions: NextAuthOptions = {
                 isSuccess: false
               }
             })
-            throw new Error("Invalid credentials")
+            return null  // Return null instead of throwing
           }
 
           // Verify role matches
           if (user.role !== role) {
+            console.error("Role mismatch:", user.role, "!==", role)
             await prisma.loginLog.create({
               data: {
                 userId: user.id,
@@ -149,12 +192,13 @@ export const authOptions: NextAuthOptions = {
                 isSuccess: false
               }
             })
-            throw new Error("Invalid role")
+            return null  // Return null instead of throwing
           }
 
           // Verify password
           const isValidPassword = await bcrypt.compare(password, user.password)
           if (!isValidPassword) {
+            console.error("Invalid password for user:", user.email)
             await prisma.loginLog.create({
               data: {
                 userId: user.id,
@@ -167,7 +211,7 @@ export const authOptions: NextAuthOptions = {
                 isSuccess: false
               }
             })
-            throw new Error("Invalid password")
+            return null  // Return null instead of throwing
           }
 
           // Create successful login log
