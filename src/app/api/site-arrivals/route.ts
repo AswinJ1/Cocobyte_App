@@ -11,13 +11,19 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get current user's site
+    // Get current user's site and participant info
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
         participant: {
           select: {
+            id: true,
             siteName: true,
+            carpoolInterestsSent: {
+              select: {
+                arrivalOwnerId: true,
+              }
+            }
           }
         }
       }
@@ -28,6 +34,10 @@ export async function GET() {
     }
 
     const userSiteName = currentUser.participant.siteName
+    const currentParticipantId = currentUser.participant.id
+
+    // IDs the current user has already expressed interest in
+    const interestedInIds = currentUser.participant.carpoolInterestsSent.map(i => i.arrivalOwnerId)
 
     // Fetch all participants from the same site who have submitted arrival details
     const siteArrivals = await prisma.participant.findMany({
@@ -45,10 +55,29 @@ export async function GET() {
         arrivalTo: true,
         expectedArrivalTime: true,
         interestedInCarpool: true,
+        carpoolContactNumber: true,
         gender: true,
         avatarUrl: true,
-        contactNumber: true,
         userId: true,
+        // Include carpool interests received (for showing count)
+        carpoolInterestsReceived: {
+          select: {
+            id: true,
+            interestedParticipant: {
+              select: {
+                id: true,
+                name: true,
+                college: true,
+                avatarUrl: true,
+              }
+            },
+            contactNumber: true,
+            message: true,
+            createdAt: true,
+          }
+        },
+        updatedAt: true,  // Add this
+        createdAt: true,  // Add this
       },
       orderBy: {
         expectedArrivalTime: 'asc'
@@ -82,7 +111,9 @@ export async function GET() {
           ? Math.round((stats.total / totalParticipants) * 100) 
           : 0
       },
-      currentUserId: currentUser.id
+      currentUserId: currentUser.id,
+      currentParticipantId,
+      interestedInIds, // IDs user has already expressed interest in
     })
   } catch (error) {
     console.error("Error fetching site arrivals:", error)

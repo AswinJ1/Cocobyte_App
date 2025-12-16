@@ -359,7 +359,7 @@ export default function ArrivalDetailsPopup({
                       <p className="text-xs text-muted-foreground">Carpooling</p>
                       <p className="font-medium">
                         {existingData.interestedInCarpool 
-                          ? "Interested ✓" 
+                          ? "Interested " 
                           : "Not interested"
                         }
                       </p>
@@ -408,14 +408,14 @@ export default function ArrivalDetailsPopup({
                 Your arrival details have been saved. You can edit them anytime.
               </p>
             </div>
-            {interestedInCarpool && (
+            {/* {interestedInCarpool && (
               <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
                 <Users className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800 dark:text-blue-200">
                   We'll try to connect you with other participants for carpooling!
                 </AlertDescription>
               </Alert>
-            )}
+            )} */}
             <Button onClick={handleClose} className="mt-4">
               Done
             </Button>
@@ -514,7 +514,6 @@ export default function ArrivalDetailsPopup({
                 {/* Expected Arrival Time */}
                 <div className="space-y-2">
                   <Label htmlFor="arrivalTime" className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
                     Expected Arrival Time
                   </Label>
                   <Input

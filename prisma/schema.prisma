@@ -57,13 +57,21 @@ model Participant {
   isCheckedIn    Boolean  @default(false)
   checkInTime    DateTime?
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  location     UserLocation?
-  transportMode       TransportMode?   // "flight", "train", "bus", "other"
-  arrivalFrom         String?
-  arrivalTo           String?
-  expectedArrivalTime DateTime?
-  interestedInCarpool Boolean?  @default(false)
-  arrivalDetailsSubmitted Boolean? @default(false)
+  location       UserLocation?
+  
+  // Arrival Details
+  transportMode           TransportMode?
+  arrivalFrom             String?
+  arrivalTo               String?
+  carpoolContactNumber    String?
+  expectedArrivalTime     DateTime?
+  interestedInCarpool     Boolean?  @default(false)
+  arrivalDetailsSubmitted Boolean?  @default(false)
+  
+  // Carpool Interests - received from others
+  carpoolInterestsReceived CarpoolInterest[] @relation("ArrivalOwner")
+  // Carpool Interests - sent to others
+  carpoolInterestsSent     CarpoolInterest[] @relation("InterestedParticipant")
 }
 
 model LoginLog {
@@ -125,6 +133,28 @@ model UserLocation {
 
   @@index([siteName])
   @@index([isActive])
+}
+
+model CarpoolInterest {
+  id                    String      @id @default(cuid())
+  
+  // The participant who submitted arrival details (receives the interest)
+  arrivalOwnerId        String
+  arrivalOwner          Participant @relation("ArrivalOwner", fields: [arrivalOwnerId], references: [id], onDelete: Cascade)
+  
+  // The participant who is interested in carpooling
+  interestedParticipantId String
+  interestedParticipant   Participant @relation("InterestedParticipant", fields: [interestedParticipantId], references: [id], onDelete: Cascade)
+  
+  // Contact number of the interested participant
+  contactNumber         String
+  message               String?     // Optional message
+  
+  createdAt             DateTime    @default(now())
+  
+  @@unique([arrivalOwnerId, interestedParticipantId])
+  @@index([arrivalOwnerId])
+  @@index([interestedParticipantId])
 }
 
 enum Role {
