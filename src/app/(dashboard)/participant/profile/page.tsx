@@ -256,7 +256,7 @@ export default function ParticipantProfilePage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                <div className="h-10 w-10  bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
                   <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 Personal Information
@@ -296,7 +296,7 @@ export default function ParticipantProfilePage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                <div className="h-10 w-10  bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
                   <Home className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 Hostel Information
@@ -314,7 +314,7 @@ export default function ParticipantProfilePage() {
               {profile.participant.isCheckedIn ? (
                 <div className="space-y-3 pt-2">
                   <Separator />
-                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border">
+                  <div className="flex items-start gap-3 p-4  bg-muted/50 border">
                     <Wifi className="h-5 w-5 text-muted-foreground mt-0.5" />
                     <div className="flex-1 space-y-2">
                       <div>
@@ -335,7 +335,7 @@ export default function ParticipantProfilePage() {
               ) : (
                 <div className="space-y-3 pt-2">
                   <Separator />
-                  <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/30 border border-dashed">
+                  <div className="flex items-start gap-3 p-4  bg-muted/30 border border-dashed">
                     <Wifi className="h-5 w-5 text-muted-foreground/50 mt-0.5" />
                     <div className="flex-1">
                       <p className="text-sm text-muted-foreground">
@@ -349,7 +349,7 @@ export default function ParticipantProfilePage() {
               {profile.participant.hostelLocation && (
                 <>
                   <Separator />
-                  <div className="flex items-start gap-3 p-4 rounded-lg hover:bg-muted/50 transition-colors border">
+                  <div className="flex items-start gap-3 p-4  hover:bg-muted/50 transition-colors border">
                     <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
                     <div className="flex-1">
                       <label className="text-xs font-medium text-muted-foreground">Location</label>
@@ -370,7 +370,7 @@ export default function ParticipantProfilePage() {
           </Card>
 
           {/* Account Status Card - Full Width */}
-          <Card className="md:col-span-2 shadow-lg">
+          {/* <Card className="md:col-span-2 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
@@ -404,7 +404,7 @@ export default function ParticipantProfilePage() {
                 />
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       </div>
     </div>
@@ -425,7 +425,7 @@ function InfoItem({
 }) {
   return (
     <>
-      <div className="flex items-start gap-3 p-4 rounded-lg hover:bg-muted/50 transition-colors">
+      <div className="flex items-start gap-3 p-4  hover:bg-muted/50 transition-colors">
         <div className="text-muted-foreground mt-0.5">{icon}</div>
         <div className="flex-1 min-w-0">
           <label className="text-xs font-medium text-muted-foreground block">{label}</label>
@@ -468,7 +468,7 @@ function StatCard({
   }
 
   return (
-    <div className={cn("flex items-start gap-4 p-6 rounded-xl border-2", colorClasses[color])}>
+    <div className={cn("flex items-start gap-4 p-6  border-2", colorClasses[color])}>
       <div className={cn("mt-1", iconColorClasses[color])}>
         {icon}
       </div>

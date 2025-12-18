@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, LogOut, Home, Users, FileText, User, Settings, BarChart, Trophy, BellDotIcon, BellDot, BellIcon } from "lucide-react"
+import { Search, LogOut, Home, Users, FileText, User, Settings, BarChart, Trophy, BellDotIcon, BellDot, BellIcon, HeartPulseIcon, LucideBuilding, CalendarCheck } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useSession, signOut } from "next-auth/react"
@@ -103,9 +103,21 @@ const searchOptions: SearchOption[] = [
     roles: ["PARTICIPANT"]
   },
    {
-    label: "Contest Info",
-    href: "/participant/contest_info",
-    icon: <Trophy className="h-4 w-4" />,
+    label: "Help Desk",
+    href: "/participant/helpdesk",
+    icon: <HeartPulseIcon className="h-4 w-4" />,
+    roles: ["PARTICIPANT"]
+  },
+   {
+    label: "Hostel Check In ",
+    href: "/participant/check_in",
+    icon: <LucideBuilding className="h-4 w-4" />,
+    roles: ["PARTICIPANT"]
+  },
+   {
+    label: "Schedule",
+    href: "/participant/schedule",
+    icon: <CalendarCheck className="h-4 w-4" />,
     roles: ["PARTICIPANT"]
   },
    {

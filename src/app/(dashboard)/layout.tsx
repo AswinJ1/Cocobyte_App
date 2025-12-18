@@ -40,7 +40,11 @@ import {
   MapPin,
   Map,
   CalendarArrowUp,
-  LucideCalendarSearch
+  LucideCalendarSearch,
+  LucideBuilding,
+  LucideBuilding2,
+  Building,
+  Building2Icon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -128,9 +132,9 @@ const navigation: NavigationItem[] = [
     roles: ["PARTICIPANT"]
   },
     {
-    name: "Check In",
+    name: "Hostel Check In",
     href: "/participant/check_in",
-    icon: <CheckLineIcon className="w-5 h-5" />,
+    icon: <Building2Icon className="w-5 h-5" />,
     roles: ["PARTICIPANT"]
   },
      {
@@ -271,7 +275,7 @@ function NavItem({
       href={item.href || "#"}
       onClick={onClick}
       className={cn(
-        "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+        "group relative flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium transition-all duration-200",
         isActive 
           ? "bg-primary text-primary-foreground shadow-lg" 
           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md",
