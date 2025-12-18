@@ -42,28 +42,26 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Validate required columns for verification
+    // Validate required columns
     const requiredColumns = ["name", "email", "college", "siteName"]
     const headers = Object.keys(records[0])
     
-    // Normalize headers to lowercase for comparison
     const headersLower = headers.map(h => h.toLowerCase())
     const missingColumns = requiredColumns.filter(col => !headersLower.includes(col.toLowerCase()))
 
     if (missingColumns.length > 0) {
       return NextResponse.json(
-        { error: `Missing required columns for verification: ${missingColumns.join(", ")}` },
+        { error: `Missing required columns: ${missingColumns.join(", ")}` },
         { status: 400 }
       )
     }
 
-    // Create a mapping from lowercase to actual header names
+    // Create header mapping
     const headerMap: Record<string, string> = {}
     headers.forEach(h => {
       headerMap[h.toLowerCase()] = h
     })
 
-    // Updatable fields (these are in the Participant model)
     const updatableFields = [
       "teamName",
       "hostelName",
@@ -75,167 +73,241 @@ export async function POST(req: NextRequest) {
       "gender"
     ]
 
-    // Check which updatable fields are present in the CSV (case-insensitive)
     const presentUpdatableFields = updatableFields.filter(col => 
       headersLower.includes(col.toLowerCase())
     )
 
     if (presentUpdatableFields.length === 0) {
       return NextResponse.json(
-        { error: "No updatable fields found in CSV. Updatable fields are: " + updatableFields.join(", ") },
+        { error: "No updatable fields found. Updatable fields: " + updatableFields.join(", ") },
         { status: 400 }
       )
     }
 
-    const results = {
-      updated: 0,
-      failed: 0,
-      errors: [] as Array<{ row: number; email: string; error: string }>,
-      updatedUsers: [] as Array<{ 
-        email: string; 
-        name: string; 
-        updatedFields: string[] 
-      }>,
+    // Helper to get field value case-insensitively
+    const getFieldValue = (record: Record<string, string>, fieldName: string): string => {
+      const actualHeader = headerMap[fieldName.toLowerCase()]
+      return actualHeader ? record[actualHeader]?.trim() || "" : ""
     }
+
+    // STEP 1: Validate all rows first (no DB calls)
+    const validRows: Array<{
+      email: string
+      name: string
+      college: string
+      siteName: string
+      updateData: Record<string, string>
+      updatedFields: string[]
+      rowNumber: number
+    }> = []
+
+    const errors: Array<{ row: number; email: string; error: string }> = []
 
     for (let i = 0; i < records.length; i++) {
       const record = records[i]
-      const rowNumber = i + 2 // Account for header row and 0-index
+      const rowNumber = i + 2
 
-      // Get values using case-insensitive header matching
-      const getFieldValue = (fieldName: string): string => {
-        const actualHeader = headerMap[fieldName.toLowerCase()]
-        return actualHeader ? record[actualHeader]?.trim() || "" : ""
-      }
+      const email = getFieldValue(record, "email").toLowerCase()
+      const name = getFieldValue(record, "name")
+      const college = getFieldValue(record, "college")
+      const siteName = getFieldValue(record, "siteName")
 
-      const email = getFieldValue("email").toLowerCase()
-      const name = getFieldValue("name")
-      const college = getFieldValue("college")
-      const siteName = getFieldValue("siteName")
-
-      // Validate required fields
       if (!email || !name || !college || !siteName) {
-        results.failed++
-        results.errors.push({
+        errors.push({
           row: rowNumber,
           email: email || "N/A",
-          error: "Missing required verification fields (name, email, college, siteName)",
+          error: "Missing required fields (name, email, college, siteName)",
         })
         continue
       }
 
-      try {
-        // Find the existing user WITH participant data
-        const existingUser = await prisma.user.findUnique({
-          where: { email },
-          include: {
-            participant: true
-          }
-        })
+      // Build update data
+      const updateData: Record<string, string> = {}
+      const updatedFields: string[] = []
 
-        if (!existingUser) {
-          results.failed++
-          results.errors.push({
-            row: rowNumber,
-            email,
-            error: "User not found with this email",
-          })
-          continue
+      for (const field of presentUpdatableFields) {
+        const value = getFieldValue(record, field)
+        if (value && value !== "") {
+          updateData[field] = value
+          updatedFields.push(field)
         }
+      }
 
-        // Check if participant exists
-        if (!existingUser.participant) {
-          results.failed++
-          results.errors.push({
-            row: rowNumber,
-            email,
-            error: "User exists but has no participant profile",
-          })
-          continue
-        }
-
-        const participant = existingUser.participant
-
-        // Verify user details match (case-insensitive comparison with null checks)
-        const verificationErrors: string[] = []
-
-        const existingName = participant.name?.trim().toLowerCase() || ""
-        const existingCollege = participant.college?.trim().toLowerCase() || ""
-        const existingSiteName = participant.siteName?.trim().toLowerCase() || ""
-
-        if (existingName !== name.toLowerCase()) {
-          verificationErrors.push(`Name mismatch: expected "${participant.name || 'N/A'}", got "${name}"`)
-        }
-
-        if (existingCollege !== college.toLowerCase()) {
-          verificationErrors.push(`College mismatch: expected "${participant.college || 'N/A'}", got "${college}"`)
-        }
-
-        if (existingSiteName !== siteName.toLowerCase()) {
-          verificationErrors.push(`Site name mismatch: expected "${participant.siteName || 'N/A'}", got "${siteName}"`)
-        }
-
-        if (verificationErrors.length > 0) {
-          results.failed++
-          results.errors.push({
-            row: rowNumber,
-            email,
-            error: verificationErrors.join("; "),
-          })
-          continue
-        }
-
-        // Build update data with only present fields
-        const updateData: Record<string, string> = {}
-        const updatedFields: string[] = []
-
-        for (const field of presentUpdatableFields) {
-          const value = getFieldValue(field)
-          if (value && value !== "") {
-            updateData[field] = value
-            updatedFields.push(field)
-          }
-        }
-
-        if (Object.keys(updateData).length === 0) {
-          results.failed++
-          results.errors.push({
-            row: rowNumber,
-            email,
-            error: "No fields to update (all update fields are empty)",
-          })
-          continue
-        }
-
-        // Update the participant (not the user)
-        await prisma.participant.update({
-          where: { userId: existingUser.id },
-          data: updateData,
-        })
-
-        results.updated++
-        results.updatedUsers.push({
-          email,
-          name,
-          updatedFields,
-        })
-
-      } catch (error) {
-        console.error(`Error updating user ${email}:`, error)
-        results.failed++
-        results.errors.push({
+      if (Object.keys(updateData).length === 0) {
+        errors.push({
           row: rowNumber,
           email,
-          error: error instanceof Error ? error.message : "Unknown error occurred",
+          error: "No fields to update (all fields empty)",
         })
+        continue
+      }
+
+      validRows.push({
+        email,
+        name,
+        college,
+        siteName,
+        updateData,
+        updatedFields,
+        rowNumber
+      })
+    }
+
+    // STEP 2: Fetch ALL users+participants in ONE query
+    const allEmails = validRows.map(r => r.email)
+    const existingUsers = await prisma.user.findMany({
+      where: {
+        email: { in: allEmails }
+      },
+      include: {
+        participant: true
+      }
+    })
+
+    // Create email lookup map
+    const userMap = new Map(
+      existingUsers.map(u => [u.email, u])
+    )
+
+    // STEP 3: Verify all rows and prepare updates
+    const updates: Array<{
+      userId: string
+      data: Record<string, string>
+      email: string
+      name: string
+      updatedFields: string[]
+    }> = []
+
+    for (const row of validRows) {
+      const user = userMap.get(row.email)
+
+      if (!user) {
+        errors.push({
+          row: row.rowNumber,
+          email: row.email,
+          error: "User not found",
+        })
+        continue
+      }
+
+      if (!user.participant) {
+        errors.push({
+          row: row.rowNumber,
+          email: row.email,
+          error: "No participant profile",
+        })
+        continue
+      }
+
+      const p = user.participant
+
+      // Verify details match
+      const verificationErrors: string[] = []
+      
+      if (p.name.trim().toLowerCase() !== row.name.toLowerCase()) {
+        verificationErrors.push(`Name mismatch: expected "${p.name}", got "${row.name}"`)
+      }
+      if (p.college.trim().toLowerCase() !== row.college.toLowerCase()) {
+        verificationErrors.push(`College mismatch: expected "${p.college}", got "${row.college}"`)
+      }
+      if ((p.siteName || "").trim().toLowerCase() !== row.siteName.toLowerCase()) {
+        verificationErrors.push(`Site mismatch: expected "${p.siteName || 'N/A'}", got "${row.siteName}"`)
+      }
+
+      if (verificationErrors.length > 0) {
+        errors.push({
+          row: row.rowNumber,
+          email: row.email,
+          error: verificationErrors.join("; "),
+        })
+        continue
+      }
+
+      updates.push({
+        userId: user.id,
+        data: row.updateData,
+        email: row.email,
+        name: row.name,
+        updatedFields: row.updatedFields
+      })
+    }
+
+    // STEP 4: Batch update using transaction (all updates in single round-trip)
+    const updatedUsers: Array<{ email: string; name: string; updatedFields: string[] }> = []
+
+    if (updates.length > 0) {
+      try {
+        // Use transaction to batch all updates (max 500 per transaction for safety)
+        const CHUNK_SIZE = 500
+        
+        for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+          const chunk = updates.slice(i, i + CHUNK_SIZE)
+          
+          await prisma.$transaction(
+            chunk.map(({ userId, data }) =>
+              prisma.participant.update({
+                where: { userId },
+                data
+              })
+            )
+          )
+        }
+
+        // All succeeded
+        updatedUsers.push(
+          ...updates.map(u => ({
+            email: u.email,
+            name: u.name,
+            updatedFields: u.updatedFields
+          }))
+        )
+      } catch (error) {
+        // If transaction fails, fall back to individual updates to get granular errors
+        console.error("Batch update failed, trying individual updates:", error)
+        
+        for (const update of updates) {
+          try {
+            await prisma.participant.update({
+              where: { userId: update.userId },
+              data: update.data
+            })
+
+            updatedUsers.push({
+              email: update.email,
+              name: update.name,
+              updatedFields: update.updatedFields
+            })
+          } catch (updateError) {
+            errors.push({
+              row: validRows.find(r => r.email === update.email)?.rowNumber || 0,
+              email: update.email,
+              error: updateError instanceof Error ? updateError.message : "Update failed"
+            })
+          }
+        }
       }
     }
 
+    const results = {
+      updated: updatedUsers.length,
+      failed: errors.length,
+      errors,
+      updatedUsers,
+    }
+
     return NextResponse.json(results)
+    
   } catch (error) {
     console.error("Bulk update error:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+        updated: 0,
+        failed: 0,
+        errors: [],
+        updatedUsers: []
+      },
       { status: 500 }
     )
   }
