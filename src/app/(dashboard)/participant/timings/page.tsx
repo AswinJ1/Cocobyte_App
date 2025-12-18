@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { FaWhatsapp } from "react-icons/fa"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
@@ -603,8 +604,8 @@ export default function TimingsPage() {
                             {interest.interestedParticipant.college}
                           </p>
                           {interest.message && (
-                            <p className="text-sm mt-2 italic text-muted-foreground">
-                              "{interest.message}"
+                            <p className="text-sm mt-2 text-muted-foreground">
+                              {interest.message}
                             </p>
                           )}
                         </div>
@@ -648,7 +649,7 @@ export default function TimingsPage() {
           {selectedInterest && (
             <div className="space-y-4 py-4">
               {/* Participant Info */}
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-3 p-3 ">
                 <Avatar className="h-12 w-12">
                   <AvatarImage src={selectedInterest.interestedParticipant.avatarUrl || undefined} />
                   <AvatarFallback>
@@ -664,8 +665,8 @@ export default function TimingsPage() {
               </div>
 
               {selectedInterest.message && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <p className="text-sm italic">"{selectedInterest.message}"</p>
+                <div className="p-3 rounded-lg">
+                  <p className="text-sm ">{selectedInterest.message}</p>
                 </div>
               )}
 
@@ -694,13 +695,13 @@ export default function TimingsPage() {
               {/* Action Buttons */}
               <div className="space-y-2">
                 <Button 
-                  className="w-full gap-2 bg-green-600 hover:bg-green-700"
+                  className="w-full gap-2  "
                   onClick={() => openWhatsApp(
                     selectedInterest.contactNumber, 
                     selectedInterest.interestedParticipant.name.split(" ")[0]
                   )}
                 >
-                  <MessageCircle className="h-4 w-4" />
+                  <FaWhatsapp className="h-4 w-4" />
                   Message on WhatsApp
                   <ExternalLink className="h-3 w-3 ml-1" />
                 </Button>
