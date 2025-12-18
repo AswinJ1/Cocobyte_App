@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, LogOut, Home, Users, FileText, User, Settings, BarChart, Trophy, BellDotIcon, BellDot, BellIcon, HeartPulseIcon, LucideBuilding, CalendarCheck } from "lucide-react"
+import { Search, LogOut, Home, Users, FileText, User, Settings, BarChart, Trophy, BellDotIcon, BellDot, BellIcon, HeartPulseIcon, LucideBuilding, CalendarCheck, Plane } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useSession, signOut } from "next-auth/react"
@@ -94,6 +94,12 @@ const searchOptions: SearchOption[] = [
     label: "My Profile",
     href: "/admin/profile",
     icon: <User className="h-4 w-4" />,
+    roles: ["ADMIN"]
+  },
+    {
+    label: "Arrival Details",
+    href: "/admin/arrival-details",
+    icon: <Plane className="h-4 w-4" />,
     roles: ["ADMIN"]
   },
   {

@@ -44,7 +44,8 @@ import {
   LucideBuilding,
   LucideBuilding2,
   Building,
-  Building2Icon
+  Building2Icon,
+  Plane
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -67,6 +68,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar"
+import { FaPlane, FaPlaneArrival } from "react-icons/fa"
 
 interface NavigationItem {
   name: string
@@ -173,6 +175,12 @@ const navigation: NavigationItem[] = [
         roles: ["ADMIN"]
       },
     ]
+  },
+  {
+    name: "Arrival Details",
+    href: "/admin/arrival-details",
+    icon: <Plane className="w-5 h-5" />,
+    roles: ["ADMIN"]
   },
 ]
 
