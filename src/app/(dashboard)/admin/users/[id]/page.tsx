@@ -51,9 +51,11 @@ import {
   Eye,
   EyeOff,
   Users,
-  DoorOpen
+  DoorOpen,
+  VerifiedIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { FaBuilding, FaMapMarked, FaPrescription, FaUser, FaUserAlt, FaUserFriends } from "react-icons/fa"
 
 interface User {
   id: string
@@ -342,8 +344,8 @@ export default function UserDetailPage() {
                     </AvatarFallback>
                   )}
                 </Avatar>
-                <div className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-green-500 border-4 border-background flex items-center justify-center">
-                  <CheckCircle className="h-4 w-4 text-white" />
+                <div className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-blue-500 border-4 border-background flex items-center justify-center">
+                  <VerifiedIcon className="h-4 w-4 text-white" />
                 </div>
               </div>
 
@@ -352,34 +354,34 @@ export default function UserDetailPage() {
                 <h1 className="text-3xl sm:text-4xl font-bold">{getUserDisplayName()}</h1>
                 <p className="text-muted-foreground text-lg mt-1 break-all">{user.email}</p>
                 <div className="flex flex-wrap gap-2 mt-4 justify-center sm:justify-start">
-                  <Badge variant={getRoleVariant(user.role)} className="text-sm">
-                    <Shield className="h-3 w-3 mr-1" />
-                    {user.role}
-                  </Badge>
+                    {/* <Shield className="h-3 w-3 mr-1" /> */}
+                    {user.role} | &nbsp;
                   {/* {user.role === "ADMIN" && user.admin?.isSuperAdmin && (
                     <Badge variant="destructive" className="text-xs">
                       <Shield className="h-3 w-3 mr-1" />
                       Super Admin
                     </Badge>
                   )} */}
-                  {isOwnAccount && (
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
-                      <UserCircle className="h-3 w-3 mr-1" />
+                  {isOwnAccount 
+                  && (
+                    <Badge variant="secondary" className="">
+                      {/* <UserCircle className="h-3 w-3 mr-1" /> */}
                       Your Account
                     </Badge>
-                  )}
-                  <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Active
-                  </Badge>
-                  {user.uid && (
-                    <Badge variant="outline" className="font-mono">
-                      <IdCard className="h-3 w-3 mr-1" />
-                      {user.uid}
-                    </Badge>
-                  )}
+                  )
+                  }
+                  {/* <Badge variant="secondary" className="">
+                    <CheckCircle className="h-3 w-3 mr-1" /> */}
+                    {/* Active */}
+                  {/* </Badge> */}
+               
+                    {/* <Badge variant="outline" className="font-mono"> */}
+                      {/* <IdCard className="h-3 w-3 mr-1" /> */}
+                     UID: {user.uid}
+                    {/* </Badge> */}
+                
                   {user.participant?.siteName && (
-                    <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20">
+                    <Badge variant="outline" className="">
                       <MapPin className="h-3 w-3 mr-1" />
                       {user.participant.siteName}
                     </Badge>
@@ -417,7 +419,7 @@ export default function UserDetailPage() {
                 {canDeleteUser() ? (
                   <Button
                     onClick={() => setShowDeleteDialog(true)}
-                    variant="destructive"
+                    variant="outline"
                     className="gap-2"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -445,8 +447,8 @@ export default function UserDetailPage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                  <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="h-10 w-10  flex items-center justify-center">
+                  <FaUserFriends className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 Account Information
               </CardTitle>
@@ -470,8 +472,8 @@ export default function UserDetailPage() {
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                      <UserCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    <div className="h-10 w-10 0 flex items-center justify-center">
+                      <FaUserAlt className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                     </div>
                     Personal Information
                   </CardTitle>
@@ -501,8 +503,8 @@ export default function UserDetailPage() {
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/20 flex items-center justify-center">
-                      <MapPin className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                    <div className="h-10 w-10  flex items-center justify-center">
+                      <FaMapMarked className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                     </div>
                     Site & Team Information
                   </CardTitle>
@@ -525,8 +527,8 @@ export default function UserDetailPage() {
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <div className="h-10 w-10  flex items-center justify-center">
+                      <FaBuilding className="h-5 w-5 text-green-600 dark:text-green-400" />
                     </div>
                     Hostel Information
                   </CardTitle>
@@ -566,8 +568,8 @@ export default function UserDetailPage() {
               <Card className="shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                      <Wifi className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                    <div className="h-10 w-10  flex items-center justify-center">
+                      <Wifi className="h-5 w-5 text-blue-400 dark:text-blue-400" />
                     </div>
                     WiFi Credentials
                   </CardTitle>
@@ -612,8 +614,8 @@ export default function UserDetailPage() {
             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <div className="h-10 w-10 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                    <Shield className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  <div className="h-10 w-10  flex items-center justify-center">
+                    <FaUser className="h-5 w-5 text-red-600 dark:text-red-400" />
                   </div>
                   Administrator Details
                 </CardTitle>

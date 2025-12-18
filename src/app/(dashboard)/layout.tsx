@@ -286,7 +286,7 @@ function NavItem({
         "group relative flex items-center gap-3 rounded-sm px-3 py-2.5 text-sm font-medium transition-all duration-200",
         isActive 
           ? "bg-primary text-primary-foreground shadow-lg" 
-          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-md",
+          : "text-gray-800 hover:bg-accent hover:text-accent-foreground hover:shadow-md",
         isCollapsed && "justify-center"
       )}
     >
