@@ -203,7 +203,7 @@ export default function ParticipantDashboard() {
         )}
 
         {/* Welcome Section */}
-        <Card className="mb-8 shadow-lg border-none bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
+        <Card className="mb-8  ">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div>
@@ -223,9 +223,9 @@ export default function ParticipantDashboard() {
                   onClick={() => setShowArrivalPopup(true)}
                   className="gap-2"
                 >
-                  {getTransportIcon(profile.participant.transportMode || "")}
+                  {/* {getTransportIcon(profile.participant.transportMode || "")} */}
                   <span className="hidden sm:inline">View Travel Details</span>
-                  <span className="sm:hidden">Travel</span>
+                  <span className="sm:hidden">Details</span>
                 </Button>
               ) : (
                 <Button
@@ -246,7 +246,7 @@ export default function ParticipantDashboard() {
           <Card className="mb-8 shadow-lg hover:shadow-xl transition-shadow border-l-4 border-l-primary">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
-                {getTransportIcon(profile.participant.transportMode || "")}
+                {/* {getTransportIcon(profile.participant.transportMode || "")} */}
                 Your Travel Details
               </CardTitle>
             </CardHeader>
@@ -295,8 +295,8 @@ export default function ParticipantDashboard() {
           <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                  <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="h-10 w-10  flex items-center justify-center">
+                  <Building2 className="h-5 w-5 " />
                 </div>
                 Hostel Details
               </CardTitle>
@@ -356,8 +356,8 @@ export default function ParticipantDashboard() {
           <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                  <MapPin className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                <div className="h-10 w-10  flex items-center justify-center">
+                  <MapPin className="h-5 w-5 " />
                 </div>
                 Site & Team Details
               </CardTitle>
@@ -425,8 +425,8 @@ export default function ParticipantDashboard() {
             <Card className="shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                    <Wifi className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <div className="h-10 w-10  flex items-center justify-center">
+                    <Wifi className="h-5 w-5 " />
                   </div>
                   WiFi Credentials
                 </CardTitle>
@@ -493,8 +493,8 @@ export default function ParticipantDashboard() {
             <Card className="shadow-lg hover:shadow-xl transition-shadow">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-gray-900/20 flex items-center justify-center">
-                    <Wifi className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  <div className="h-10 w-10  flex items-center justify-center">
+                    <Wifi className="h-5 w-5 " />
                   </div>
                   WiFi Credentials
                 </CardTitle>
@@ -517,8 +517,8 @@ export default function ParticipantDashboard() {
           <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                  <Phone className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                <div className="h-10 w-10  flex items-center justify-center">
+                  <Phone className="h-5 w-5 " />
                 </div>
                 Contact Information
               </CardTitle>
@@ -586,8 +586,8 @@ export default function ParticipantDashboard() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                <Map className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <div className="h-10 w-10  flex items-center justify-center">
+                <Map className="h-5 w-5 " />
               </div>
               {siteMap.title}
             </CardTitle>
@@ -603,7 +603,7 @@ export default function ParticipantDashboard() {
                 <iframe 
                   width="100%" 
                   height="" 
-                  className="h-[700px] max-md:h-[500px] rounded-lg"
+                  className="h-[700px] max-md:h-[500px] "
                   title={siteMap.title}
                   src={siteMap.url}
                   loading="lazy"
