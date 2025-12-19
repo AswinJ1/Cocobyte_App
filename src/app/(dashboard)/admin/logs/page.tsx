@@ -26,7 +26,9 @@ import {
   Filter,
   X,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 import DashboardHeader from "@/components/dashboard-header"
 
@@ -60,6 +62,10 @@ const LogsPage = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
   
   const [filters, setFilters] = useState({
     startDate: "",
@@ -96,6 +102,7 @@ const LogsPage = () => {
       if (response.ok) {
         const data = await response.json()
         setLogs(data)
+        setCurrentPage(1) // Reset to first page when fetching new data
       } else {
         setError("Failed to fetch login logs")
       }
@@ -142,6 +149,24 @@ const LogsPage = () => {
       minute: "2-digit",
       hour12: true
     })
+  }
+
+  // Pagination calculations
+  const totalItems = logs.logs.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentLogs = logs.logs.slice(startIndex, endIndex)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    setExpandedRows(new Set()) // Clear expanded rows when changing pages
+  }
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value))
+    setCurrentPage(1) // Reset to first page
+    setExpandedRows(new Set())
   }
 
   if (isLoading) {
@@ -303,8 +328,27 @@ const LogsPage = () => {
         {/* Logs Table */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activity ({logs.logs.length})</CardTitle>
-            <CardDescription>View and analyze login activity logs</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Recent Activity ({logs.logs.length})</CardTitle>
+                <CardDescription>View and analyze login activity logs</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="itemsPerPage" className="text-sm">Rows per page:</Label>
+                <select
+                  id="itemsPerPage"
+                  value={itemsPerPage}
+                  onChange={(e) => handleItemsPerPageChange(e.target.value)}
+                  className="border rounded px-2 py-1 text-sm"
+                >
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {logs.logs.length === 0 ? (
@@ -312,95 +356,154 @@ const LogsPage = () => {
                 <p className="text-muted-foreground">No login logs found matching your criteria.</p>
               </div>
             ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[180px]">Timestamp</TableHead>
-                      <TableHead className="w-[120px]">Activity</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {logs.logs.map((log) => (
-                      <>
-                        <TableRow key={log.id} className="cursor-pointer" onClick={() => toggleRowExpansion(log.id)}>
-                          <TableCell className="font-mono text-xs">
-                            {formatDate(log.timestamp)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={log.activity === 'Logged In' ? 'default' : 'destructive'}>
-                              {log.activity}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium">{log.user}</div>
-                            <div className="text-xs text-muted-foreground">{log.email}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 text-sm">
-                              <Monitor className="h-4 w-4 text-muted-foreground" />
-                              <span>{log.data.device}</span>
-                              <span className="text-muted-foreground">•</span>
-                              <Globe className="h-4 w-4 text-muted-foreground" />
-                              <span>{log.data.country}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {expandedRows.has(log.id) ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </TableCell>
-                        </TableRow>
-                        {expandedRows.has(log.id) && (
-                          <TableRow>
-                            <TableCell colSpan={5} className="bg-muted/50">
-                              <div className="p-4 space-y-3">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <span className="text-sm font-medium">IP Address:</span>
-                                    <code className="ml-2 text-sm bg-background px-2 py-1 rounded font-mono">
-                                      {log.data.IPAddress}
-                                    </code>
-                                  </div>
-                                  <div>
-                                    <span className="text-sm font-medium">Location:</span>
-                                    <span className="ml-2 text-sm">
-                                      {log.data.city}, {log.data.region}, {log.data.country}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <span className="text-sm font-medium">Device:</span>
-                                    <span className="ml-2 text-sm">{log.data.device}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-sm font-medium">OS:</span>
-                                    <span className="ml-2 text-sm">{log.data.os}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-sm font-medium">Browser:</span>
-                                    <span className="ml-2 text-sm">{log.data.browser}</span>
-                                  </div>
-                                </div>
-                                <div className="pt-2 border-t">
-                                  <span className="text-sm font-medium">User Agent:</span>
-                                  <code className="block mt-1 text-xs bg-background p-2 rounded font-mono overflow-x-auto">
-                                    {log.data.userAgent}
-                                  </code>
-                                </div>
+              <>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[180px]">Timestamp</TableHead>
+                        <TableHead className="w-[120px]">Activity</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Details</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentLogs.map((log) => (
+                        <>
+                          <TableRow key={log.id} className="cursor-pointer" onClick={() => toggleRowExpansion(log.id)}>
+                            <TableCell className="font-mono text-xs">
+                              {formatDate(log.timestamp)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={log.activity === 'Logged In' ? 'default' : 'destructive'}>
+                                {log.activity}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">{log.user}</div>
+                              <div className="text-xs text-muted-foreground">{log.email}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2 text-sm">
+                                <Monitor className="h-4 w-4 text-muted-foreground" />
+                                <span>{log.data.device}</span>
+                                <span className="text-muted-foreground">•</span>
+                                <Globe className="h-4 w-4 text-muted-foreground" />
+                                <span>{log.data.country}</span>
                               </div>
                             </TableCell>
+                            <TableCell>
+                              {expandedRows.has(log.id) ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </TableCell>
                           </TableRow>
-                        )}
-                      </>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                          {expandedRows.has(log.id) && (
+                            <TableRow>
+                              <TableCell colSpan={5} className="bg-muted/50">
+                                <div className="p-4 space-y-3">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <span className="text-sm font-medium">IP Address:</span>
+                                      <code className="ml-2 text-sm bg-background px-2 py-1 rounded font-mono">
+                                        {log.data.IPAddress}
+                                      </code>
+                                    </div>
+                                    <div>
+                                      <span className="text-sm font-medium">Location:</span>
+                                      <span className="ml-2 text-sm">
+                                        {log.data.city}, {log.data.region}, {log.data.country}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <span className="text-sm font-medium">Device:</span>
+                                      <span className="ml-2 text-sm">{log.data.device}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-sm font-medium">OS:</span>
+                                      <span className="ml-2 text-sm">{log.data.os}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-sm font-medium">Browser:</span>
+                                      <span className="ml-2 text-sm">{log.data.browser}</span>
+                                    </div>
+                                  </div>
+                                  <div className="pt-2 border-t">
+                                    <span className="text-sm font-medium">User Agent:</span>
+                                    <code className="block mt-1 text-xs bg-background p-2 rounded font-mono overflow-x-auto">
+                                      {log.data.userAgent}
+                                    </code>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                      </Button>
+                      
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNumber;
+                          if (totalPages <= 5) {
+                            pageNumber = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNumber = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNumber = totalPages - 4 + i;
+                          } else {
+                            pageNumber = currentPage - 2 + i;
+                          }
+                          
+                          return (
+                            <Button
+                              key={pageNumber}
+                              variant={currentPage === pageNumber ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handlePageChange(pageNumber)}
+                              className="w-8 h-8 p-0"
+                            >
+                              {pageNumber}
+                            </Button>
+                          );
+                        })}
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
