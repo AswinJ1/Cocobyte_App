@@ -305,7 +305,10 @@ export default function AdminCheckInsPage() {
         {/* Filters */}
         <Card>
           <CardContent className="p-3 sm:p-4">
+             
             <div className="space-y-3">
+<CardTitle className="text-base sm:text-lg">Filter Check-Ins</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Filter check-ins by various criteria</CardDescription>
               {/* Search Input */}
               <Input
                 placeholder="Search name, email, college..."
