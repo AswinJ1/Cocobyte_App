@@ -208,7 +208,8 @@ export default function ParticipantDashboard() {
             <div className="flex justify-between items-start">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  Welcome back, {profile?.participant?.name?.split(" ")[0] || "Participant"}! 👋
+                  Welcome back, {profile?.participant?.teamName || "Team"}! 👋
+                  {/* participant?.name?.split(" ")[0] */}
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mt-1">
                   Here's your hostel information and essential details
