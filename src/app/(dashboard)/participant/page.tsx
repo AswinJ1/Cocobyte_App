@@ -562,8 +562,8 @@ export default function ParticipantDashboard() {
           <Card className="shadow-lg mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                  <MapPin className="h-5 w-5 text-red-600 dark:text-red-400" />
+                <div className="h-10 w-10 rounded-lg bg-background flex items-center justify-center">
+                  <MapPin className="h-5 w-5 " />
                 </div>
                 Hostel Location
               </CardTitle>
@@ -573,7 +573,7 @@ export default function ParticipantDashboard() {
                 href={profile.participant.hostelLocation}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                className="flex items-center gap-2  transition-colors"
               >
                 <span className="text-lg font-semibold">View on Google Maps</span>
                 <ExternalLink className="h-5 w-5" />
