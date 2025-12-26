@@ -71,28 +71,29 @@ export default function SchedulePage() {
         <Card>
           <ScrollArea className="h-[600px]">
             <div className="p-4 space-y-3">
-              {scheduleData[activeDay].map((item, index) => (
+              {/* {scheduleData[activeDay].map((item, index) => (
                 <div
                   key={index}
                   className="flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-lg border transition-all hover:shadow-md"
-                >
+                > */}
                   {/* Time */}
-                  <Badge variant="secondary" className="w-fit font-mono text-sm px-3 py-1">
+                  {/* <Badge variant="secondary" className="w-fit font-mono text-sm px-3 py-1">
                     {item.time}
-                  </Badge>
+                  </Badge> */}
 
                   {/* Content */}
-                  <div className="flex-1 space-y-1">
+                  {/* <div className="flex-1 space-y-1">
                     <h3 className="font-semibold">{item.title}</h3>
                     <p className="text-sm text-muted-foreground">{item.description}</p>
-                  </div>
+                  </div> */}
 
                   {/* Venue */}
-                  <Badge variant="outline" className="w-fit">
+                  {/* <Badge variant="outline" className="w-fit">
                     {item.venue}
                   </Badge>
                 </div>
-              ))}
+              ))} */}
+              <p className="text-center text-muted-foreground">Schedule details will be available soon.</p>
             </div>
           </ScrollArea>
         </Card>

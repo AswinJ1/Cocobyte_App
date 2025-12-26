@@ -9,15 +9,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { FaBuilding } from "react-icons/fa";
 
 interface Contact {
   id: string;
   name: string;
-  role: string;
+  role?: string;
   phone: string;
   email?: string;
   availability?: string;
   category: "hostel" | "technical" | "medical" | "food" | "transport" | "general";
+  hostelName?: string; // Add this
 }
 
 interface SiteContacts {
@@ -29,49 +31,48 @@ const SITE_HELPDESK_DATA: Record<string, SiteContacts> = {
   Amritapuri: {
     siteName: "Amritapuri",
     contacts: [
-      { id: "1", name: "Dr. Suresh Kumar", role: "Hostel Warden (Boys)", phone: "+91 98765 43210", email: "suresh.warden@amrita.edu", availability: "24/7", category: "hostel" },
-      { id: "2", name: "Dr. Lakshmi Nair", role: "Hostel Warden (Girls)", phone: "+91 98765 43211", email: "lakshmi.warden@amrita.edu", availability: "24/7", category: "hostel" },
-      { id: "3", name: "Arun Menon", role: "Technical Support Lead", phone: "+91 98765 43212", email: "tech.support@amrita.edu", availability: "8 AM - 10 PM", category: "technical" },
-      { id: "4", name: "Dr. Priya Sharma", role: "Medical Officer", phone: "+91 98765 43213", availability: "24/7 Emergency", category: "medical" },
-      { id: "5", name: "Rajesh Pillai", role: "Food & Catering Head", phone: "+91 98765 43214", availability: "6 AM - 10 PM", category: "food" },
-      { id: "6", name: "Vijay Kumar", role: "Transport Coordinator", phone: "+91 98765 43215", availability: "6 AM - 8 PM", category: "transport" },
-      { id: "7", name: "Help Desk", role: "General Enquiries", phone: "+91 98765 43200", email: "helpdesk.amritapuri@amrita.edu", availability: "24/7", category: "general" },
+      // { id: "1", name: "Dr. Suresh Kumar", role: "Hostel Warden (Boys)", phone: "+91 98765 43210", email: "suresh.warden@amrita.edu", availability: "24/7", category: "hostel" },
+      // { id: "2", name: "Dr. Lakshmi Nair", role: "Hostel Warden (Girls)", phone: "+91 98765 43211", email: "lakshmi.warden@amrita.edu", availability: "24/7", category: "hostel" },
+      // { id: "3", name: "Arun Menon", role: "Technical Support Lead", phone: "+91 98765 43212", email: "tech.support@amrita.edu", availability: "8 AM - 10 PM", category: "technical" },
+      // { id: "4", name: "Dr. Priya Sharma", role: "Medical Officer", phone: "+91 98765 43213", availability: "24/7 Emergency", category: "medical" },
+      // { id: "5", name: "Rajesh Pillai", role: "Food & Catering Head", phone: "+91 98765 43214", availability: "6 AM - 10 PM", category: "food" },
+      // { id: "6", name: "Vijay Kumar", role: "Transport Coordinator", phone: "+91 98765 43215", availability: "6 AM - 8 PM", category: "transport" },
+      // { id: "7", name: "Help Desk", role: "General Enquiries", phone: "+91 98765 43200", email: "helpdesk.amritapuri@amrita.edu", availability: "24/7", category: "general" },
     ],
   },
   Mysuru: {
     siteName: "Mysuru",
     contacts: [
-      { id: "1", name: "Prof. Ramesh Gowda", role: "Hostel Warden (Boys)", phone: "+91 98765 54321", email: "ramesh.warden@amrita.edu", availability: "24/7", category: "hostel" },
-      { id: "2", name: "Dr. Kavitha Rao", role: "Hostel Warden (Girls)", phone: "+91 98765 54322", email: "kavitha.warden@amrita.edu", availability: "24/7", category: "hostel" },
-      { id: "3", name: "Mahesh Kumar", role: "Technical Support Lead", phone: "+91 98765 54323", email: "tech.mysuru@amrita.edu", availability: "8 AM - 10 PM", category: "technical" },
-      { id: "4", name: "Dr. Anand Murthy", role: "Medical Officer", phone: "+91 98765 54324", availability: "24/7 Emergency", category: "medical" },
-      { id: "5", name: "Shivanna", role: "Food & Catering Head", phone: "+91 98765 54325", availability: "6 AM - 10 PM", category: "food" },
-      { id: "6", name: "Prakash Hegde", role: "Transport Coordinator", phone: "+91 98765 54326", availability: "6 AM - 8 PM", category: "transport" },
-      { id: "7", name: "Help Desk", role: "General Enquiries", phone: "+91 98765 54300", email: "helpdesk.mysuru@amrita.edu", availability: "24/7", category: "general" },
+      // { id: "1", name: "Prof. Ramesh Gowda", role: "Hostel Warden (Boys)", phone: "+91 98765 54321", email: "ramesh.warden@amrita.edu", availability: "24/7", category: "hostel" },
+      // { id: "2", name: "Dr. Kavitha Rao", role: "Hostel Warden (Girls)", phone: "+91 98765 54322", email: "kavitha.warden@amrita.edu", availability: "24/7", category: "hostel" },
+      // { id: "3", name: "Mahesh Kumar", role: "Technical Support Lead", phone: "+91 98765 54323", email: "tech.mysuru@amrita.edu", availability: "8 AM - 10 PM", category: "technical" },
+      // { id: "4", name: "Dr. Anand Murthy", role: "Medical Officer", phone: "+91 98765 54324", availability: "24/7 Emergency", category: "medical" },
+      // { id: "5", name: "Shivanna", role: "Food & Catering Head", phone: "+91 98765 54325", availability: "6 AM - 10 PM", category: "food" },
+      // { id: "6", name: "Prakash Hegde", role: "Transport Coordinator", phone: "+91 98765 54326", availability: "6 AM - 8 PM", category: "transport" },
+      // { id: "7", name: "Help Desk", role: "General Enquiries", phone: "+91 98765 54300", email: "helpdesk.mysuru@amrita.edu", availability: "24/7", category: "general" },
     ],
   },
-  Coimbatore: {
-    siteName: "Coimbatore",
-    contacts: [
-      { id: "1", name: "Dr. Senthil Kumar", role: "Hostel Warden (Boys)", phone: "+91 98765 65432", email: "senthil.warden@amrita.edu", availability: "24/7", category: "hostel" },
-      { id: "2", name: "Dr. Meena Subramanian", role: "Hostel Warden (Girls)", phone: "+91 98765 65433", email: "meena.warden@amrita.edu", availability: "24/7", category: "hostel" },
-      { id: "3", name: "Karthik Rajan", role: "Technical Support Lead", phone: "+91 98765 65434", email: "tech.cbe@amrita.edu", availability: "8 AM - 10 PM", category: "technical" },
-      { id: "4", name: "Dr. Vignesh Pandian", role: "Medical Officer", phone: "+91 98765 65435", availability: "24/7 Emergency", category: "medical" },
-      { id: "5", name: "Murugan", role: "Food & Catering Head", phone: "+91 98765 65436", availability: "6 AM - 10 PM", category: "food" },
-      { id: "6", name: "Selvam", role: "Transport Coordinator", phone: "+91 98765 65437", availability: "6 AM - 8 PM", category: "transport" },
-      { id: "7", name: "Help Desk", role: "General Enquiries", phone: "+91 98765 65400", email: "helpdesk.cbe@amrita.edu", availability: "24/7", category: "general" },
-    ],
-  },
+ Coimbatore: {
+  siteName: "Coimbatore",
+  contacts: [
+    { id: "1", name: "Aravindan", phone: "+91 9526638396", hostelName: "Kashyapa Bhavanam", category: "hostel" },
+    { id: "2", name: "Rajeswaran", phone: "+91 6381517190", hostelName: "Kashyapa Bhavanam", category: "hostel" },
+    { id: "3", name: "Sulochana", phone: "+91 6238021345", hostelName: "Adithi Bhavanam", category: "hostel" },
+    { id: "4", name: "Gopalanunni", phone: "+91 8301876419", hostelName: "Kashyapa Bhavanam Annexe", category: "hostel" },
+    { id: "5", name: "Venugopalan", phone: "+91 7795040462", hostelName: "Yagnavalkya Bhavanam", category: "hostel" },
+  ],
+}
+,
   Bangalore: {
     siteName: "Bangalore",
     contacts: [
-      { id: "1", name: "Prof. Naveen Reddy", role: "Hostel Warden (Boys)", phone: "+91 98765 76543", email: "naveen.warden@amrita.edu", availability: "24/7", category: "hostel" },
-      { id: "2", name: "Dr. Suma Rao", role: "Hostel Warden (Girls)", phone: "+91 98765 76544", email: "suma.warden@amrita.edu", availability: "24/7", category: "hostel" },
-      { id: "3", name: "Girish Babu", role: "Technical Support Lead", phone: "+91 98765 76545", email: "tech.blr@amrita.edu", availability: "8 AM - 10 PM", category: "technical" },
-      { id: "4", name: "Dr. Ashwin Kumar", role: "Medical Officer", phone: "+91 98765 76546", availability: "24/7 Emergency", category: "medical" },
-      { id: "5", name: "Ravi Shankar", role: "Food & Catering Head", phone: "+91 98765 76547", availability: "6 AM - 10 PM", category: "food" },
-      { id: "6", name: "Manjunath", role: "Transport Coordinator", phone: "+91 98765 76548", availability: "6 AM - 8 PM", category: "transport" },
-      { id: "7", name: "Help Desk", role: "General Enquiries", phone: "+91 98765 76500", email: "helpdesk.blr@amrita.edu", availability: "24/7", category: "general" },
+      // { id: "1", name: "Prof. Naveen Reddy", role: "Hostel Warden (Boys)", phone: "+91 98765 76543", email: "naveen.warden@amrita.edu", availability: "24/7", category: "hostel" },
+      // { id: "2", name: "Dr. Suma Rao", role: "Hostel Warden (Girls)", phone: "+91 98765 76544", email: "suma.warden@amrita.edu", availability: "24/7", category: "hostel" },
+      // { id: "3", name: "Girish Babu", role: "Technical Support Lead", phone: "+91 98765 76545", email: "tech.blr@amrita.edu", availability: "8 AM - 10 PM", category: "technical" },
+      // { id: "4", name: "Dr. Ashwin Kumar", role: "Medical Officer", phone: "+91 98765 76546", availability: "24/7 Emergency", category: "medical" },
+      // { id: "5", name: "Ravi Shankar", role: "Food & Catering Head", phone: "+91 98765 76547", availability: "6 AM - 10 PM", category: "food" },
+      // { id: "6", name: "Manjunath", role: "Transport Coordinator", phone: "+91 98765 76548", availability: "6 AM - 8 PM", category: "transport" },
+      // { id: "7", name: "Help Desk", role: "General Enquiries", phone: "+91 98765 76500", email: "helpdesk.blr@amrita.edu", availability: "24/7", category: "general" },
     ],
   },
 };
@@ -135,7 +136,8 @@ export default function HelpdeskPage() {
     return siteData.contacts.filter((contact) => contact.category === activeCategory);
   };
 
-  const categories = ["all", "hostel", "technical", "medical", "food", "transport", "general"];
+  const categories = ["all", "hostel"];
+  // , "technical", "medical", "food", "transport", "general"
 
   if (isLoading) {
     return (
@@ -200,17 +202,17 @@ export default function HelpdeskPage() {
         {siteContacts && (
           <>
             {/* Site Badge */}
-            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border-none">
+            <Card className="bg-background border-none">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <span className="text-2xl">🏫</span>
+                  <div className="h-12 w-12  flex items-center justify-center">
+                    <span className="text-2xl"><FaBuilding /></span>
                   </div>
                   <div>
                     <h2 className="text-xl font-bold">{siteContacts.siteName} Campus</h2>
-                    <p className="text-muted-foreground">
+                    {/* <p className="text-muted-foreground">
                       {siteContacts.contacts.length} contacts available
-                    </p>
+                    </p> */}
                   </div>
                 </div>
               </CardContent>
@@ -231,56 +233,45 @@ export default function HelpdeskPage() {
             </div>
 
             {/* Contacts Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredContacts().map((contact) => (
-                <Card key={contact.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{contact.name}</CardTitle>
-                        <CardDescription className="mt-1">{contact.role}</CardDescription>
-                      </div>
-                      <Badge className={CATEGORY_LABELS[contact.category]?.color}>
-                        {CATEGORY_LABELS[contact.category]?.label}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {/* Phone */}
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Phone</p>
-                      <a 
-                        href={`tel:${contact.phone.replace(/\s/g, "")}`}
-                        className="text-base font-semibold text-primary hover:underline"
-                      >
-                        {contact.phone}
-                      </a>
-                    </div>
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  {filteredContacts().map((contact) => (
+    <Card key={contact.id} className="hover:shadow-lg transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-lg">{contact.name}</CardTitle>
+            {contact.role && (
+              <CardDescription className="mt-1">{contact.role}</CardDescription>
+            )}
+          </div>
+          <Badge className={CATEGORY_LABELS[contact.category]?.color}>
+            {CATEGORY_LABELS[contact.category]?.label}
+          </Badge>
+        </div>
+      </CardHeader>
 
-                    {/* Email */}
-                    {contact.email && (
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Email</p>
-                        <a 
-                          href={`mailto:${contact.email}`}
-                          className="text-base font-semibold text-primary hover:underline break-all"
-                        >
-                          {contact.email}
-                        </a>
-                      </div>
-                    )}
+      <CardContent className="space-y-3">
+        <div>
+          <p className="text-sm text-muted-foreground mb-1">Phone</p>
+          <a 
+            href={`tel:${contact.phone.replace(/\s/g, "")}`}
+            className="text-base font-semibold text-primary hover:underline"
+          >
+            {contact.phone}
+          </a>
+        </div>
 
-                    {/* Availability */}
-                    {contact.availability && (
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Availability</p>
-                        <Badge variant="outline">{contact.availability}</Badge>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+        {contact.hostelName && (
+          <div>
+            <p className="text-sm text-muted-foreground mb-1">Hostel</p>
+            <Badge variant="outline">{contact.hostelName}</Badge>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  ))}
+</div>
+
 
             {/* No Results */}
             {filteredContacts().length === 0 && (
@@ -288,7 +279,7 @@ export default function HelpdeskPage() {
                 <CardContent className="flex flex-col items-center justify-center py-12 px-4">
                   <h3 className="text-xl font-bold mb-2">No Contacts Found</h3>
                   <p className="text-muted-foreground text-center">
-                    No contacts available for this category.
+                    Contacts will be available soon for this category.
                   </p>
                 </CardContent>
               </Card>
