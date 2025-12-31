@@ -2,39 +2,43 @@
 
 import { useState } from "react";
 import DashboardHeader from "@/components/dashboard-header";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Calendar, Clock, MapPin } from "lucide-react";
 
 type ScheduleItem = {
   time: string;
   title: string;
-  description: string;
-  venue: string;
+  // description: string;
+  // venue: string;
 };
 
 const scheduleData: Record<string, ScheduleItem[]> = {
   day1: [
-    { time: "09:00 AM", title: "Registration", description: "Check-in and welcome kit collection", venue: "Main Hall" },
-    { time: "10:00 AM", title: "Opening Ceremony", description: "Welcome speech and event overview", venue: "Auditorium" },
-    { time: "11:30 AM", title: "Workshop 1", description: "Introduction to Web Development", venue: "Room A" },
-    { time: "01:00 PM", title: "Lunch Break", description: "Networking lunch", venue: "Cafeteria" },
-    { time: "02:00 PM", title: "Hackathon Begins", description: "Team formation and project kickoff", venue: "Lab 1" },
-    { time: "06:00 PM", title: "Day 1 Wrap-up", description: "Progress review and announcements", venue: "Main Hall" },
+    { time: "08:00 - 09:30 AM", title: "Breakfast",  },
+    { time: "08:30 - 05:00 PM", title: "Registration Open",  },
+    { time: "12:30 - 01:30 PM", title: "Lunch",  },
+    { time: "02:30 - 04:00 PM", title: "Opening Ceremony",  },
+    { time: "04:00 - 04:30 PM", title: "Tech Talk - JetBrains",  },
+    { time: "05:00 - 07:00 PM", title: "Practice Contest",  },
+    { time: "07:30 - 10:00 PM", title: "Banquet Dinner",  },
   ],
   day2: [
-    { time: "09:00 AM", title: "Day 2 Kickoff", description: "Morning briefing and updates", venue: "Main Hall" },
-    { time: "10:00 AM", title: "Workshop 2", description: "Advanced React Techniques", venue: "Room B" },
-    { time: "12:00 PM", title: "Lunch Break", description: "Networking lunch", venue: "Cafeteria" },
-    { time: "01:00 PM", title: "Project Submissions", description: "Final project submission deadline", venue: "Online" },
-    { time: "03:00 PM", title: "Presentations", description: "Team project presentations", venue: "Auditorium" },
-    { time: "05:00 PM", title: "Closing Ceremony", description: "Awards and certificates distribution", venue: "Auditorium" },
+    { time: "07:00 - 08:00 AM", title: "Breakfast",  },
+    { time: "08:30 - 01:30 PM", title: "Main Contest",  },
+    { time: "02:30 - 03:30 PM", title: "Lunch",  },
+    { time: "03:30 - 04:30 PM", title: "Cultural Programs",  },
+    { time: "04:30 - 06:30 PM", title: "Closing Ceremony & Awards",  },
+    { time: "06:30 - 07:00 PM", title: "Goodies Distribution",  },
+    { time: "07:30 - 08:30 PM", title: "Dinner",  },
   ],
 };
 
 export default function SchedulePage() {
   const [activeDay, setActiveDay] = useState<"day1" | "day2">("day1");
+  const [viewMode, setViewMode] = useState<"list" | "timeline">("list");
 
   return (
     <div className="min-h-screen bg-background">
@@ -47,6 +51,26 @@ export default function SchedulePage() {
           <p className="text-muted-foreground mt-1">
             View the complete schedule for the event
           </p>
+        </div>
+
+        {/* View Mode Toggle */}
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            List View
+          </Button>
+          <Button
+            variant={viewMode === "timeline" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("timeline")}
+          >
+            <Clock className="w-4 h-4 mr-2" />
+            Timeline View
+          </Button>
         </div>
 
         {/* Day Filter */}
@@ -67,36 +91,72 @@ export default function SchedulePage() {
           </Button>
         </div>
 
-        {/* Schedule List */}
-        <Card>
-          <ScrollArea className="h-[600px]">
-            <div className="p-4 space-y-3">
-              {/* {scheduleData[activeDay].map((item, index) => (
-                <div
-                  key={index}
-                  className="flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-lg border transition-all hover:shadow-md"
-                > */}
-                  {/* Time */}
-                  {/* <Badge variant="secondary" className="w-fit font-mono text-sm px-3 py-1">
-                    {item.time}
-                  </Badge> */}
+        {/* List View */}
+        {viewMode === "list" && (
+          <Card>
+            <ScrollArea className="h-[600px]">
+              <div className="p-4 space-y-3">
+                {scheduleData[activeDay].map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-lg border transition-all hover:shadow-md"
+                  >
+                    {/* Time */}
+                    <Badge variant="secondary" className="w-fit font-mono text-sm px-3 py-1">
+                      {item.time}
+                    </Badge>
 
-                  {/* Content */}
-                  {/* <div className="flex-1 space-y-1">
-                    <h3 className="font-semibold">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
-                  </div> */}
+                    {/* Content */}
+                    <div className="flex-1 space-y-1">
+                      <h3 className="font-semibold">{item.title}</h3>
+                      {/* <p className="text-sm text-muted-foreground">{item.description}</p> */}
+                    </div>
 
-                  {/* Venue */}
-                  {/* <Badge variant="outline" className="w-fit">
-                    {item.venue}
-                  </Badge>
+                    {/* Venue */}
+                    {/* <Badge variant="outline" className="w-fit flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      {item.venue}
+                    </Badge> */}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </Card>
+        )}
+
+        {/* Timeline View */}
+        {viewMode === "timeline" && (
+          <Card>
+            <ScrollArea className="h-[600px]">
+              <div className="p-8">
+                <div className="relative">
+                  {/* Timeline line */}
+                  <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-border"></div>
+
+                  {scheduleData[activeDay].map((item, index) => (
+                    <div key={index} className="relative mb-8 pl-16">
+                      {/* Timeline dot */}
+                      <div className="absolute left-6 top-2 w-5 h-5 rounded-full bg-primary border-4 border-background shadow-sm"></div>
+
+                      {/* Content */}
+                      <div className="space-y-2">
+                        <Badge variant="secondary" className="font-mono text-xs">
+                          {item.time}
+                        </Badge>
+                        <h3 className="font-semibold text-lg">{item.title}</h3>
+                        {/* <p className="text-sm text-muted-foreground">{item.description}</p> */}
+                        {/* <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <MapPin className="w-3 h-3" />
+                          {item.venue}
+                        </div> */}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))} */}
-              <p className="text-center text-muted-foreground">Schedule details will be available soon.</p>
-            </div>
-          </ScrollArea>
-        </Card>
+              </div>
+            </ScrollArea>
+          </Card>
+        )}
       </div>
     </div>
   );

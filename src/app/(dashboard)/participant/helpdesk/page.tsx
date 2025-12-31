@@ -31,13 +31,12 @@ const SITE_HELPDESK_DATA: Record<string, SiteContacts> = {
   Amritapuri: {
     siteName: "Amritapuri",
     contacts: [
-      // { id: "1", name: "Dr. Suresh Kumar", role: "Hostel Warden (Boys)", phone: "+91 98765 43210", email: "suresh.warden@amrita.edu", availability: "24/7", category: "hostel" },
-      // { id: "2", name: "Dr. Lakshmi Nair", role: "Hostel Warden (Girls)", phone: "+91 98765 43211", email: "lakshmi.warden@amrita.edu", availability: "24/7", category: "hostel" },
-      // { id: "3", name: "Arun Menon", role: "Technical Support Lead", phone: "+91 98765 43212", email: "tech.support@amrita.edu", availability: "8 AM - 10 PM", category: "technical" },
-      // { id: "4", name: "Dr. Priya Sharma", role: "Medical Officer", phone: "+91 98765 43213", availability: "24/7 Emergency", category: "medical" },
-      // { id: "5", name: "Rajesh Pillai", role: "Food & Catering Head", phone: "+91 98765 43214", availability: "6 AM - 10 PM", category: "food" },
-      // { id: "6", name: "Vijay Kumar", role: "Transport Coordinator", phone: "+91 98765 43215", availability: "6 AM - 8 PM", category: "transport" },
-      // { id: "7", name: "Help Desk", role: "General Enquiries", phone: "+91 98765 43200", email: "helpdesk.amritapuri@amrita.edu", availability: "24/7", category: "general" },
+      { id: "1", name: "Biju T. S.", phone: "9400487494", hostelName: "Kailasam", category: "hostel" },
+      { id: "2", name: "Prasad Kumar", phone: "9496135448", hostelName: "Shivam", category: "hostel" },
+      { id: "3", name: "Suresh Kumar", phone: "8330020128", hostelName: "Shivam", category: "hostel" },
+      { id: "4", name: "Lalu R.", phone: "9400012783", hostelName: "Sanathanam", category: "hostel" },
+      { id: "5", name: "Uppendra N.", phone: "8943011963", hostelName: "Pravanam", category: "hostel" },
+      { id: "6", name: "Abhilash Varma", phone: "8606232168", hostelName: "Pravanam", category: "hostel" },
     ],
   },
   Mysuru: {
