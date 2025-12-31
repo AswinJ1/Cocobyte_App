@@ -99,7 +99,7 @@ export default function SchedulePage() {
                 {scheduleData[activeDay].map((item, index) => (
                   <div
                     key={index}
-                    className="flex flex-col md:flex-row md:items-center gap-4 p-4 rounded-lg border transition-all hover:shadow-md"
+                    className="flex flex-col md:flex-row md:items-center gap-4 p-4  border transition-all hover:shadow-md"
                   >
                     {/* Time */}
                     <Badge variant="secondary" className="w-fit font-mono text-sm px-3 py-1">
@@ -136,7 +136,7 @@ export default function SchedulePage() {
                   {scheduleData[activeDay].map((item, index) => (
                     <div key={index} className="relative mb-8 pl-16">
                       {/* Timeline dot */}
-                      <div className="absolute left-6 top-2 w-5 h-5 rounded-full bg-primary border-4 border-background shadow-sm"></div>
+                      <div className="absolute left-6 top-2 w-5 h-5 rounded-sm  bg-background border-4 border-primary shadow-sm"></div>
 
                       {/* Content */}
                       <div className="space-y-2">
