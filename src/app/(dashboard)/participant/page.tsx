@@ -132,6 +132,8 @@ export default function ParticipantDashboard() {
     }
   }
 
+  console.log("Participant Profile:", profile)
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
