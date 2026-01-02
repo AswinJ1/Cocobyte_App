@@ -45,7 +45,8 @@ import {
   LucideBuilding2,
   Building,
   Building2Icon,
-  Plane
+  Plane,
+  Trophy
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -68,7 +69,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar"
-import { FaPlane, FaPlaneArrival } from "react-icons/fa"
+import { FaPlane, FaPlaneArrival, FaPlaneDeparture } from "react-icons/fa"
 
 interface NavigationItem {
   name: string
@@ -89,6 +90,12 @@ const navigation: NavigationItem[] = [
     name: "Dashboard",
     href: "/participant",
     icon: <LayoutDashboard className="w-5 h-5" />,
+    roles: ["PARTICIPANT"]
+  },
+  {
+    name: "Web Check-In",
+    href: "/participant/boarding-task",
+    icon: <FaPlaneDeparture className="w-5 h-5" />,
     roles: ["PARTICIPANT"]
   },
   {
