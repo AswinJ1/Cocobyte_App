@@ -47,9 +47,8 @@ export async function validateBoardingPass(teamName: string, siteName: string): 
     if (found) {
       const campus = site;
       const renamedFilename = found.renamed_filename;
-      const safeFileName = renamedFilename.replace(/\s+/g, "_");
-      const boardingPassPath = `boarding_pass/${campus}/${safeFileName}_boardingpass.pdf`;
-      const passportPath = `passport/${campus}/${safeFileName}_passport.pdf`;
+      const boardingPassPath = `boarding_pass/${campus}/${renamedFilename}_boardingpass.pdf`;
+      const passportPath = `passport/${campus}/${renamedFilename}_passport.pdf`;
       const supabaseBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_FLIGHT_DETAILS_URL || "";
       
       return {
