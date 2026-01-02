@@ -144,14 +144,14 @@ const BoardingPassValidator = () => {
     }
 
     // Debug: Log comparison values
-    // console.log("Form UID:", values.uid, "| Participant UID:", participant.uid);
-    // console.log("Form Email:", values.email, "| Participant Email:", participant.email);
+    console.log("Form UID:", values.uid, "| Participant UID:", participant.uid);
+    console.log("Form Email:", values.email, "| Participant Email:", participant.email);
 
     // Case-sensitive comparison
     const uidMatch = values.uid === participant.uid;
     const emailMatch = values.email === participant.email;
 
-    // console.log("UID Match:", uidMatch, "| Email Match:", emailMatch);
+    console.log("UID Match:", uidMatch, "| Email Match:", emailMatch);
 
     if (uidMatch && emailMatch) {
       setIsValidated(true);
