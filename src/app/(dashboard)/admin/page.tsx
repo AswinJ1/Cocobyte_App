@@ -14,6 +14,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { 
   Users, 
   UserPlus, 
@@ -25,18 +32,19 @@ import {
   Monitor,
   MapPin,
   UsersRound,
-  Home,  // Add this import for hostel icon
+  Home,
   TrendingDown,
   LogInIcon,
-  LogsIcon
+  LogsIcon,
+  Calendar
 } from "lucide-react"
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement } from 'chart.js'
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement, Filler } from 'chart.js'
 import { Pie, Bar, Line, Doughnut } from 'react-chartjs-2'
 import { SearchBar } from "@/components/search-bar"
 import DashboardHeader from "@/components/dashboard-header"
 
 // Register ChartJS components
-ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement)
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, LineElement, PointElement, Filler)
 
 interface Stats {
   totalUsers: number
@@ -52,6 +60,12 @@ interface User {
     siteName?: string
     teamName?: string
     hostelName?: string
+    expectedArrivalTime?: string  // Changed from arrivalDate
+    transportMode?: string
+    arrivalFrom?: string
+    arrivalTo?: string
+    interestedInCarpool?: boolean
+    arrivalDetailsSubmitted?: boolean
   }
 }
 
@@ -92,6 +106,7 @@ export default function AdminDashboard() {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedCampus, setSelectedCampus] = useState<string>("all")
 
   useEffect(() => {
     fetchStats()
@@ -134,6 +149,14 @@ export default function AdminDashboard() {
   // Get participants only
   const participants = users.filter(u => u.role === 'PARTICIPANT' && u.participant)
 
+  // Get unique campuses for filter
+  const uniqueCampuses = [...new Set(participants.map(u => u.participant?.siteName).filter(Boolean))] as string[]
+
+  // Filter participants by selected campus
+  const filteredParticipants = selectedCampus === "all" 
+    ? participants 
+    : participants.filter(u => u.participant?.siteName === selectedCampus)
+
   // Site distribution data
   const siteDistribution = participants.reduce((acc: { [key: string]: number }, user) => {
     const site = user.participant?.siteName || 'Not Set'
@@ -166,68 +189,89 @@ export default function AdminDashboard() {
     ],
   }
 
-  // Team distribution data - Top 10 teams for pie chart
-  const teamDistribution = participants.reduce((acc: { [key: string]: number }, user) => {
-    const team = user.participant?.teamName?.trim() || ''
-    if (team && team !== '' && team !== 'No Team') {
-      acc[team] = (acc[team] || 0) + 1
+  // Arrival date distribution data (filtered by campus)
+  const arrivalDistribution = filteredParticipants.reduce((acc: { [key: string]: number }, user) => {
+    const arrivalDateTime = user.participant?.expectedArrivalTime
+    let formattedDate = 'Not Set'
+    
+    if (arrivalDateTime) {
+      try {
+        const date = new Date(arrivalDateTime)
+        // Check if date is valid
+        if (!isNaN(date.getTime())) {
+          formattedDate = date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          })
+        }
+      } catch {
+        formattedDate = 'Not Set'
+      }
     }
+    
+    acc[formattedDate] = (acc[formattedDate] || 0) + 1
     return acc
   }, {})
 
-  // Sort teams by count and get top 10
-  const sortedTeams = Object.entries(teamDistribution)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 10)
+  // Sort arrival dates chronologically
+  const sortedArrivalDates = Object.entries(arrivalDistribution)
+    .sort(([dateA], [dateB]) => {
+      if (dateA === 'Not Set') return 1
+      if (dateB === 'Not Set') return -1
+      // Parse the formatted dates back for sorting
+      const parseDate = (str: string) => {
+        const months: Record<string, number> = {
+          'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+          'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+        }
+        const parts = str.split(' ')
+        if (parts.length === 2) {
+          const month = months[parts[0]]
+          const day = parseInt(parts[1])
+          return new Date(2026, month, day).getTime()
+        }
+        return 0
+      }
+      return parseDate(dateA) - parseDate(dateB)
+    })
 
-  const teamData = {
-    labels: sortedTeams.map(([team]) => team),
+  const arrivalData = {
+    labels: sortedArrivalDates.map(([date]) => date),
     datasets: [
       {
-        label: 'Team Members',
-        data: sortedTeams.map(([, count]) => count),
-        backgroundColor: [
-          'rgba(239, 68, 68, 0.8)',    // Red
-          'rgba(34, 197, 94, 0.8)',    // Green
-          'rgba(59, 130, 246, 0.8)',   // Blue
-          'rgba(251, 191, 36, 0.8)',   // Yellow
-          'rgba(168, 85, 247, 0.8)',   // Purple
-          'rgba(236, 72, 153, 0.8)',   // Pink
-          'rgba(14, 165, 233, 0.8)',   // Cyan
-          'rgba(132, 204, 22, 0.8)',   // Lime
-          'rgba(249, 115, 22, 0.8)',   // Orange
-          'rgba(99, 102, 241, 0.8)',   // Indigo
-        ],
-        borderColor: [
-          'rgba(239, 68, 68, 1)',
-          'rgba(34, 197, 94, 1)',
-          'rgba(59, 130, 246, 1)',
-          'rgba(251, 191, 36, 1)',
-          'rgba(168, 85, 247, 1)',
-          'rgba(236, 72, 153, 1)',
-          'rgba(14, 165, 233, 1)',
-          'rgba(132, 204, 22, 1)',
-          'rgba(249, 115, 22, 1)',
-          'rgba(99, 102, 241, 1)',
-        ],
+        label: 'Arrivals',
+        data: sortedArrivalDates.map(([, count]) => count),
+        backgroundColor: 'rgba(34, 197, 94, 0.8)',
+        borderColor: 'rgba(34, 197, 94, 1)',
         borderWidth: 2,
+        borderRadius: 6,
       },
     ],
   }
 
-  // Hostel distribution data
+  // Hostel distribution data - normalized to handle case and whitespace variations
   const hostelDistribution = participants.reduce((acc: { [key: string]: number }, user) => {
-    const hostel = user.participant?.hostelName || 'Not Set'
+    let hostel = user.participant?.hostelName?.trim() || 'Not Set'
+    // Normalize: capitalize first letter of each word
+    hostel = hostel
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
     acc[hostel] = (acc[hostel] || 0) + 1
     return acc
   }, {})
 
+  // Sort by count descending for better visualization
+  const sortedHostels = Object.entries(hostelDistribution)
+    .sort(([, a], [, b]) => b - a)
+
   const hostelData = {
-    labels: Object.keys(hostelDistribution),
+    labels: sortedHostels.map(([hostel]) => hostel),
     datasets: [
       {
         label: 'Participants by Hostel',
-        data: Object.values(hostelDistribution),
+        data: sortedHostels.map(([, count]) => count),
         backgroundColor: [
           'rgba(14, 165, 233, 0.8)',   // Cyan
           'rgba(239, 68, 68, 0.8)',    // Red
@@ -237,6 +281,10 @@ export default function AdminDashboard() {
           'rgba(236, 72, 153, 0.8)',   // Pink
           'rgba(249, 115, 22, 0.8)',   // Orange
           'rgba(99, 102, 241, 0.8)',   // Indigo
+          'rgba(20, 184, 166, 0.8)',   // Teal
+          'rgba(244, 63, 94, 0.8)',    // Rose
+          'rgba(132, 204, 22, 0.8)',   // Lime
+          'rgba(59, 130, 246, 0.8)',   // Blue
         ],
         borderColor: [
           'rgba(14, 165, 233, 1)',
@@ -247,6 +295,10 @@ export default function AdminDashboard() {
           'rgba(236, 72, 153, 1)',
           'rgba(249, 115, 22, 1)',
           'rgba(99, 102, 241, 1)',
+          'rgba(20, 184, 166, 1)',
+          'rgba(244, 63, 94, 1)',
+          'rgba(132, 204, 22, 1)',
+          'rgba(59, 130, 246, 1)',
         ],
         borderWidth: 2,
       },
@@ -436,6 +488,106 @@ export default function AdminDashboard() {
     },
   }
 
+  // Arrival chart options (vertical bar)
+  const arrivalChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFont: {
+          size: 14,
+        },
+        bodyFont: {
+          size: 13,
+        },
+        callbacks: {
+          label: function(context: any) {
+            const value = context.parsed.y || 0;
+            return `${value} participants`;
+          }
+        }
+      },
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            size: 11,
+          },
+        },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          precision: 0,
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)',
+        },
+      },
+    },
+  }
+
+  // Horizontal bar chart options for hostel
+  const horizontalBarChartOptions = {
+    indexAxis: 'y' as const,
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFont: {
+          size: 14,
+        },
+        bodyFont: {
+          size: 13,
+        },
+        callbacks: {
+          label: function(context: any) {
+            const value = context.parsed.x || 0;
+            const total = context.dataset.data.reduce((acc: number, val: number) => acc + val, 0);
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `${value} participants (${percentage}%)`;
+          }
+        }
+      },
+    },
+    scales: {
+      x: {
+        beginAtZero: true,
+        ticks: {
+          precision: 0,
+        },
+        grid: {
+          display: true,
+          color: 'rgba(0, 0, 0, 0.1)',
+        },
+      },
+      y: {
+        grid: {
+          display: false,
+        },
+        ticks: {
+          font: {
+            size: 12,
+          },
+        },
+      },
+    },
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -579,7 +731,7 @@ export default function AdminDashboard() {
               </Card>
             </div>
 
-            {/* Second Row - Site, Hostel & Team Distribution */}
+            {/* Second Row - Site, Hostel & Arrival Distribution */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card>
                 <CardHeader>
@@ -604,24 +756,41 @@ export default function AdminDashboard() {
                   </CardTitle>
                   <CardDescription>Distribution across different hostels</CardDescription>
                 </CardHeader>
-                <CardContent className="flex justify-center">
-                  <div className="w-full max-w-[300px]">
-                    <Pie data={hostelData} options={chartOptions} />
+                <CardContent>
+                  <div className="w-full h-[280px]">
+                    <Bar data={hostelData} options={horizontalBarChartOptions} />
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <UsersRound className="h-5 w-5 text-purple-600" />
-                      Teams
-                  </CardTitle>
-                  <CardDescription>Teams with most members</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-green-600" />
+                        Arrival Details
+                      </CardTitle>
+                      <CardDescription>Participants by arrival date</CardDescription>
+                    </div>
+                    <Select value={selectedCampus} onValueChange={setSelectedCampus}>
+                      <SelectTrigger className="w-[130px]">
+                        <SelectValue placeholder="All Campus" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Campus</SelectItem>
+                        {uniqueCampuses.map((campus) => (
+                          <SelectItem key={campus} value={campus}>
+                            {campus}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </CardHeader>
-                <CardContent className="flex justify-center">
-                  <div className="w-full max-w-[300px]">
-                    <Pie data={teamData} options={chartOptions} />
+                <CardContent>
+                  <div className="w-full h-[280px]">
+                    <Bar data={arrivalData} options={arrivalChartOptions} />
                   </div>
                 </CardContent>
               </Card>

@@ -20,8 +20,19 @@ export async function GET(request: NextRequest) {
 
     const users = await prisma.user.findMany({
       include: {
-        participant: true,
-        admin: true,
+        participant: {
+          select: {
+            siteName: true,
+            teamName: true,
+            hostelName: true,
+            expectedArrivalTime: true,
+            transportMode: true,
+            arrivalFrom: true,
+            arrivalTo: true,
+            interestedInCarpool: true,
+            arrivalDetailsSubmitted: true,
+          }
+        }
       },
       orderBy: {
         createdAt: "desc",
